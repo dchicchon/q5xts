@@ -1,3 +1,6 @@
+import { Vector } from './Vector';
+import { Color } from './Color';
+import { Lcg, Shr3, Ziggurat } from './Random';
 interface StyleType {
   colorMode: number;
   noStroke: boolean;
@@ -12,401 +15,18 @@ interface StyleType {
   textStyle: string;
 }
 
-type VectorOrNumber = Vector | number;
-
-class Vector {
-  x: number;
-  y: number;
-  z: number;
-  cacheNorm: any;
-  cacheNormSq: any;
-  constructor(_x: number, _y: number, _z: number) {
-    this.x = _x || 0;
-    this.y = _y || 0;
-    this.z = _z || 0;
-    this.cacheNorm = null;
-    this.cacheNormSq = null;
-  }
-
-  // TODO: Very different from previous written confirm if this works
-  static arg2v(x: VectorOrNumber, y?: number, z?: number): Vector {
-    if (x instanceof Vector) {
-      return x;
-    }
-    if (y != undefined) {
-      return new Vector(x, y, z ?? 0);
-    }
-    return new Vector(x, x, x);
-  }
-
-  add(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    this.x += u.x;
-    this.y += u.y;
-    this.z += u.z;
-    this.deprecNorm();
-    return this;
-  }
-
-  calcNorm() {
-    if (this.cacheNormSq == null) {
-      this.cacheNormSq = this.x * this.x + this.y * this.y + this.z * this.z;
-      this.cacheNorm = Math.sqrt(this.cacheNormSq);
-    }
-  }
-
-  rem(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    this.x %= u.x;
-    this.y %= u.y;
-    this.z %= u.z;
-    this.deprecNorm();
-    return this;
-  }
-
-  sub(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    this.x -= u.x;
-    this.y -= u.y;
-    this.z -= u.z;
-    this.deprecNorm();
-    return this;
-  }
-
-  mult(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    this.x *= u.x;
-    this.y *= u.y;
-    this.z *= u.z;
-    this.deprecNorm();
-    return this;
-  }
-
-  div(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    this.x /= u.x;
-    this.y /= u.y;
-    this.z /= u.z;
-    this.deprecNorm();
-    return this;
-  }
-
-  mag() {
-    this.calcNorm();
-    return this.cacheNorm;
-  }
-
-  magSq() {
-    this.calcNorm();
-    return this.cacheNormSq;
-  }
-
-  dot(x: VectorOrNumber, y?: number, z?: number): number {
-    const u = Vector.arg2v(x, y, z);
-    return this.x * u.x + this.y * u.y + this.z * u.z;
-  }
-
-  dist(x: VectorOrNumber, y?: number, z?: number): number {
-    const u = Vector.arg2v(x, y, z);
-    let xDiff = this.x - u.x;
-    let yDiff = this.y - u.y;
-    let zDiff = this.z - u.z;
-    return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
-  }
-
-  cross(x: VectorOrNumber, y?: number, z?: number): Vector {
-    const u = Vector.arg2v(x, y, z);
-    let xCross = this.y * u.z - this.z * u.y;
-    let yCross = this.z * u.x - this.x * u.z;
-    let zCross = this.x * u.y - this.y * u.x;
-    this.x = xCross;
-    this.y = yCross;
-    this.z = zCross;
-    this.deprecNorm();
-    return this;
-  }
-
-  normalize(): Vector {
-    this.calcNorm();
-    let n = this.cacheNorm;
-    this.x /= n;
-    this.y /= n;
-    this.z /= n;
-    this.cacheNorm = 1;
-    this.cacheNormSq = 1;
-    return this;
-  }
-
-  limit(m: number): Vector {
-    this.calcNorm();
-    let n = this.cacheNorm;
-    if (n > m) {
-      let t = m / n;
-      this.x *= t;
-      this.y *= t;
-      this.z *= t;
-      this.cacheNorm = m;
-      this.cacheNormSq = m * m;
-    }
-    return this;
-  }
-
-  setMag(m: number): Vector {
-    this.calcNorm();
-    let n = this.cacheNorm;
-    let t = m / n;
-    this.x *= t;
-    this.y *= t;
-    this.z *= t;
-    this.cacheNorm = m;
-    this.cacheNormSq = m * m;
-    return this;
-  }
-
-  heading(): number {
-    return Math.atan2(this.y, this.x);
-  }
-
-  rotate(ang: number): Vector {
-    let costh = Math.cos(ang);
-    let sinth = Math.sin(ang);
-    let vx = this.x * costh - this.y * sinth;
-    let vy = this.x * sinth + this.y * costh;
-    this.x = vx;
-    this.y = vy;
-    return this;
-  }
-
-  angleBetween(x: VectorOrNumber, y?: number, z?: number): number {
-    const u = Vector.arg2v(x, y, z);
-    const costh = this.dot(u) / (this.mag() * u.mag());
-    let ang;
-    ang = Math.acos(Math.min(1, Math.max(-1, costh)));
-    ang = ang * Math.sign(this.cross(u).z || 1);
-    return ang;
-  }
-
-  lerp(u: Vector, t: number): Vector {
-    this.x = this.x * (1 - t) + u.x * t;
-    this.y = this.y * (1 - t) + u.y * t;
-    this.z = this.z * (1 - t) + u.z * t;
-    this.deprecNorm();
-    return this;
-  }
-
-  reflect(n: Vector): Vector {
-    n.normalize();
-    return this.sub(n.mult(2 * this.dot(n)));
-  }
-
-  array(): Array<number> {
-    return [this.x, this.y, this.z];
-  }
-
-  equals(u: Vector, epsilon: number): boolean {
-    if (epsilon == undefined) {
-      epsilon = Number.EPSILON;
-      if (epsilon == undefined) {
-        epsilon = 0;
-      }
-    }
-    return (
-      Math.abs(u.x - this.x) < epsilon &&
-      Math.abs(u.y - this.y) < epsilon &&
-      Math.abs(u.z - this.z) < epsilon
-    );
-  }
-
-  fromAngle(th: number, l?: number): Vector {
-    if (l == undefined) {
-      l = 1;
-    }
-    this.cacheNorm = l;
-    this.cacheNormSq = l * l;
-    this.x = l * Math.cos(th);
-    this.y = l * Math.sin(th);
-    this.z = 0;
-    return this;
-  }
-
-  fromAngles(th: number, ph: number, l?: number): Vector {
-    if (l == undefined) {
-      l = 1;
-    }
-    this.cacheNorm = l;
-    this.cacheNormSq = l * l;
-    const cosph = Math.cos(ph);
-    const sinph = Math.sin(ph);
-    const costh = Math.cos(th);
-    const sinth = Math.sin(th);
-    this.x = l * sinth * sinph;
-    this.y = -l * costh;
-    this.z = l * sinth * cosph;
-    return this;
-  }
-  random2D(): Vector {
-    this.cacheNorm = 1;
-    this.cacheNormSq = 1;
-    return this.fromAngle(Math.random() * Math.PI * 2);
-  }
-  random3D(): Vector {
-    this.cacheNorm = 1;
-    this.cacheNormSq = 1;
-    return this.fromAngles(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-  }
-
-  toString(): string {
-    return `[${this.x}, ${this.y}, ${this.z}]`;
-  }
-
-  deprecNorm() {
-    this.cacheNormSq = null;
-    this.cacheNorm = null;
-  }
-
-  set(_x: number, _y: number, _z: number) {
-    this.x = _x || 0;
-    this.y = _y || 0;
-    this.z = _z || 0;
-  }
-
-  copy(): Vector {
-    return new Vector(this.x, this.y, this.z);
-  }
+interface KeysHeld {
+  [id: number]: boolean
+}
+interface FilterIml {
+  [id: number]: Function;
 }
 
-class Color {
-  MAGIC: number;
-  _r: number;
-  _g: number;
-  _b: number;
-  _a: number;
-  _h: number;
-  _s: number;
-  _v: number;
-  _hsvInferred: boolean;
-
-  constructor(r: number, g: number, b: number, a: number) {
-    this.MAGIC = 0xc010a;
-    this._r = r;
-    this._g = g;
-    this._b = b;
-    this._a = a;
-    this._h = 0;
-    this._s = 0;
-    this._v = 0;
-    this._hsvInferred = false;
-  }
-
-  static hsv2rgb(h: number, s: number, v: number): Array<number> {
-    //https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-    let r, g, b;
-    let hh, i, ff, p, q, t;
-    if (s == 0) {
-      r = v;
-      g = v;
-      b = v;
-      return [r * 255, g * 255, b * 255];
-    }
-    hh = h;
-    if (hh > 360) hh = 0;
-    hh /= 60;
-    i = ~~hh;
-    ff = hh - i;
-    p = v * (1.0 - s);
-    q = v * (1.0 - s * ff);
-    t = v * (1.0 - s * (1.0 - ff));
-    switch (i) {
-      case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-      case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-      case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-      case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-      case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-      default:
-        r = v;
-        g = p;
-        b = q;
-        break;
-    }
-    return [r * 255, g * 255, b * 255];
-  }
-  static rgb2hsv(r: number, g: number, b: number): Array<number> {
-    //https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-    let rgbMin, rgbMax;
-    let h, s, v;
-    rgbMin = r < g ? (r < b ? r : b) : g < b ? g : b;
-    rgbMax = r > g ? (r > b ? r : b) : g > b ? g : b;
-    v = (rgbMax * 100) / 255;
-    if (v == 0) {
-      h = 0;
-      s = 0;
-      return [h, s, v];
-    }
-    s = (100 * (rgbMax - rgbMin)) / rgbMax;
-    if (s == 0) {
-      h = 0;
-      return [h, s, v];
-    }
-    if (rgbMax == r) h = 0 + (60 * (g - b)) / (rgbMax - rgbMin);
-    else if (rgbMax == g) h = 120 + (60 * (b - r)) / (rgbMax - rgbMin);
-    else h = 240 + (60 * (r - g)) / (rgbMax - rgbMin);
-    return [h, s, v];
-  }
-
-  setRed(x: number) {
-    this._r = x;
-    this._hsvInferred = false;
-  }
-  setGreen(x: number) {
-    this._g = x;
-    this._hsvInferred = false;
-  }
-  setBlue(x: number) {
-    this._b = x;
-    this._hsvInferred = false;
-  }
-  setAlpha(x: number) {
-    this._a = x / 255;
-    this._hsvInferred = false;
-  }
-  _inferHSV() {
-    if (!this._hsvInferred) {
-      [this._h, this._s, this._v] = Color.rgb2hsv(this._r, this._g, this._b);
-      this._hsvInferred = true;
-    }
-  }
-  toString(): string {
-    return `rgba(${Math.round(this._r)},${Math.round(this._g)},${Math.round(this._b)},${
-      ~~(this._a * 1000) / 1000
-    })`;
-  }
-}
-
-class BaseSketch {
+class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
   width: number;
-  ctx: CanvasRenderingContext2D;
+  ctx: CanvasRenderingContext2D | null;
   MAGIC: number;
   RGB: number;
   HSV: number;
@@ -509,7 +129,7 @@ class BaseSketch {
   keyIsPressed: boolean;
   mouseIsPressed: boolean;
   key: any;
-  keyCode: any;
+  keyCode: number;
   pixels: any;
   accelerationX: number;
   accelerationY: number;
@@ -545,7 +165,7 @@ class BaseSketch {
   private curveBuff: Array<any>;
   private imgData: any;
   private preloadCnt: number;
-  private keysHeld: object;
+  private keysHeld: KeysHeld;
   private millisStart: number;
   private tmpCtx: any;
   private tmpCt2: any;
@@ -568,21 +188,38 @@ class BaseSketch {
   acos: Function;
   atan: Function;
   atan2: Function;
+  filterImpl: FilterIml;
 
-  constructor() {
+  PERLIN_YWRAPB: number;
+  PERLIN_YWRAP: number;
+  PERLIN_ZWRAPB: number;
+  PERLIN_ZWRAP: number;
+  PERLIN_SIZE: number;
+  perlin_octaves: number;
+  perlin_amp_falloff: number;
+  scaled_cosine: Function;
+  p_perlin: any;
+  rng1: Shr3 | Lcg;
+  ziggurat: Ziggurat;
+  eventNames: Array<string>;
+
+  hasSensorPermission: boolean;
+
+  constructor(scope: 'global' | 'offscreen' | null, elm: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.height = 100;
     this.width = 100;
     this.canvas.height = this.height;
     this.canvas.width = this.width;
     this.ctx = this.canvas.getContext('2d');
-    if (document.body) {
-      document.body.appendChild(this.canvas);
-    } else {
-      window.addEventListener('load', () => {
-        document.body.appendChild(this.canvas);
-      });
-    }
+    elm.appendChild(this.canvas);
+    // if (document.body) {
+    //   document.body.appendChild(this.canvas);
+    // } else {
+    //   window.addEventListener('load', () => {
+    //     document.body.appendChild(this.canvas);
+    //   });
+    // }
     this.MAGIC = 0x9a0ce55;
 
     this.RGB = 0;
@@ -785,603 +422,9 @@ class BaseSketch {
     this.acos = Math.acos;
     this.atan = Math.atan;
     this.atan2 = Math.atan2;
+    this.filterImpl = {};
 
-    //================================================================
-    // CURVE QUERY
-    //================================================================
-    //https://github.com/processing/p5.js/blob/1.1.9/src/core/shape/curves.js
-
-    //================================================================
-    // COLORS
-    //================================================================
-
-    $.Color = function (r, g, b, a) {
-      let that = this;
-      that.MAGIC = 0xc010a;
-      that._r = r;
-      that._g = g;
-      that._b = b;
-      that._a = a;
-      that._h = 0;
-      that._s = 0;
-      that._v = 0;
-      that._hsvInferred = false;
-
-      that.setRed = function (x) {
-        that._r = x;
-        that._hsvInferred = false;
-      };
-      that.setGreen = function (x) {
-        that._g = x;
-        that._hsvInferred = false;
-      };
-      that.setBlue = function (x) {
-        that._b = x;
-        that._hsvInferred = false;
-      };
-      that.setAlpha = function (x) {
-        that._a = x / 255;
-        that._hsvInferred = false;
-      };
-      that._inferHSV = function () {
-        if (!that._hsvInferred) {
-          [that._h, that._s, that._v] = rgb2hsv(that._r, that._g, that._b);
-          that._hsvInferred = true;
-        }
-      };
-      that.toString = function () {
-        return `rgba(${Math.round(that._r)},${Math.round(that._g)},${Math.round(
-          that._b
-        )},${~~(that._a * 1000) / 1000})`;
-      };
-    };
-
-    function lerpHue(h0, h1, t) {
-      var methods = [
-        [Math.abs(h1 - h0), $.map(t, 0, 1, h0, h1)],
-        [Math.abs(h1 + 360 - h0), $.map(t, 0, 1, h0, h1 + 360)],
-        [Math.abs(h1 - 360 - h0), $.map(t, 0, 1, h0, h1 - 360)],
-      ];
-      methods.sort((x, y) => x[0] - y[0]);
-      return (methods[0][1] + 720) % 360;
-    }
-
-    //================================================================
-    // DRAWING SETTING
-    //================================================================
-
-    function defaultStyle() {
-      ctx.fillStyle = 'white';
-      ctx.strokeStyle = 'black';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'miter';
-    }
-
-    $.strokeWeight = function (n) {
-      $._style_noStroke = false;
-      ctx.lineWidth = n;
-    };
-    $.stroke = function () {
-      $._style.noStroke = false;
-      if (typeof arguments[0] == 'string') {
-        ctx.strokeStyle = arguments[0];
-        return;
-      }
-      let col = $.color.apply(null, arguments);
-      if (col._a <= 0) {
-        $._style.noStroke = true;
-        return;
-      }
-      ctx.strokeStyle = col;
-    };
-    $.noStroke = function () {
-      $._style.noStroke = true;
-    };
-    $.fill = function () {
-      $._style.noFill = false;
-      if (typeof arguments[0] == 'string') {
-        ctx.fillStyle = arguments[0];
-        return;
-      }
-      let col = $.color.apply(null, arguments);
-      if (col._a <= 0) {
-        $._style.noFill = true;
-        return;
-      }
-      ctx.fillStyle = col;
-    };
-    $.noFill = function () {
-      $._style.noFill = true;
-    };
-    $.blendMode = function (x) {
-      ctx.globalCompositeOperation = x;
-    };
-    $.strokeCap = function (x) {
-      ctx.lineCap = x;
-    };
-    $.strokeJoin = function (x) {
-      ctx.lineJoin = x;
-    };
-    $.ellipseMode = function (x) {
-      $._style.ellipseMode = x;
-    };
-    $.rectMode = function (x) {
-      $._style.rectMode = x;
-    };
-    $.curveDetail = function (x) {
-      $._style.curveDetail = x;
-    };
-    $.curveAlpha = function (x) {
-      $._style.curveAlpha = x;
-    };
-    $.curveTightness = function (x) {
-      console.warn(
-        "curveTightness() sets the 'alpha' parameter of Catmull-Rom curve, and is NOT identical to p5.js counterpart. As this might change in the future, please call curveAlpha() directly."
-      );
-      $._style.curveAlpha = x;
-    };
-
-    //================================================================
-    // DRAWING
-    //================================================================
-
-    $.clear = function () {
-      ctx.clearRect(0, 0, $.width, $.height);
-    };
-
-    $.background = function () {
-      if (arguments[0] && arguments[0].MAGIC == $.MAGIC) {
-        return $.image(arguments[0], 0, 0, $.width, $.height);
-      }
-      ctx.save();
-      ctx.resetTransform();
-      ctx.scale($._pixelDensity, $._pixelDensity);
-      if (typeof arguments[0] == 'string') {
-        ctx.fillStyle = arguments[0];
-      } else {
-        ctx.fillStyle = $.color(...Array.from(arguments));
-      }
-      ctx.fillRect(0, 0, $.width, $.height);
-      ctx.restore();
-    };
-
-    $.line = function (x0, y0, x1, y1) {
-      if (!$._style.noStroke) {
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-      }
-    };
-
-    function norm2PI(x) {
-      if (0 <= x && x < Math.PI * 2) {
-        return x;
-      }
-      while (x < 0) {
-        x += Math.PI * 2;
-      }
-      while (x >= Math.PI) {
-        x -= Math.PI * 2;
-      }
-      return x;
-    }
-
-    function arcImpl(x, y, w, h, start, stop, mode, detail) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      let lo = norm2PI(start);
-      let hi = norm2PI(stop);
-      ctx.beginPath();
-      for (let i = 0; i < detail + 1; i++) {
-        let t = i / detail;
-        let a = $.lerp(lo, hi, t);
-        let dx = (Math.cos(a) * w) / 2;
-        let dy = (Math.sin(a) * h) / 2;
-        ctx[i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
-      }
-      if (mode == $.CHORD) {
-        ctx.closePath();
-      } else if (mode == $.PIE) {
-        ctx.lineTo(x, y);
-        ctx.closePath();
-      }
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
-    }
-    $.arc = function (x, y, w, h, start, stop, mode, detail) {
-      if (start == stop) {
-        return $.ellipse(x, y, w, h);
-      }
-      if (detail == undefined) {
-        detail = 25;
-      }
-      if (mode == undefined) {
-        mode = $.PIE;
-      }
-      if ($._style.ellipseMode == $.CENTER) {
-        arcImpl(x, y, w, h, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.RADIUS) {
-        arcImpl(x, y, w * 2, h * 2, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.CORNER) {
-        arcImpl(x + w / 2, y + h / 2, w, h, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.CORNERS) {
-        arcImpl((x + w) / 2, (y + h) / 2, w - x, h - y, start, stop, mode, detail);
-      }
-    };
-
-    function ellipseImpl(x, y, w, h) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      ctx.beginPath();
-      ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
-    }
-    $.ellipse = function (x, y, w, h) {
-      if (h == undefined) {
-        h = w;
-      }
-      if ($._style.ellipseMode == $.CENTER) {
-        ellipseImpl(x, y, w, h);
-      } else if ($._style.ellipseMode == $.RADIUS) {
-        ellipseImpl(x, y, w * 2, h * 2);
-      } else if ($._style.ellipseMode == $.CORNER) {
-        ellipseImpl(x + w / 2, y + h / 2, w, h);
-      } else if ($._style.ellipseMode == $.CORNERS) {
-        ellipseImpl((x + w) / 2, (y + h) / 2, w - x, h - y);
-      }
-    };
-    $.circle = function (x, y, r) {
-      return $.ellipse(x, y, r, r);
-    };
-    $.point = function (x, y) {
-      if (x.x) {
-        y = x.y;
-        x = x.x;
-      }
-      ctx.beginPath();
-      ctx.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    };
-    function rectImpl(x, y, w, h) {
-      if (!$._style.noFill) {
-        ctx.fillRect(x, y, w, h);
-      }
-      if (!$._style.noStroke) {
-        ctx.strokeRect(x, y, w, h);
-      }
-    }
-    function roundedRectImpl(x, y, w, h, tl, tr, br, bl) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      if (tl == undefined) {
-        return rectImpl(x, y, w, h);
-      }
-      if (tr == undefined) {
-        return roundedRectImpl(x, y, w, h, tl, tl, tl, tl);
-      }
-      const hh = Math.min(Math.abs(h), Math.abs(w)) / 2;
-      tl = Math.min(hh, tl);
-      tr = Math.min(hh, tr);
-      bl = Math.min(hh, bl);
-      br = Math.min(hh, br);
-      ctx.beginPath();
-      ctx.moveTo(x + tl, y);
-      ctx.arcTo(x + w, y, x + w, y + h, tr);
-      ctx.arcTo(x + w, y + h, x, y + h, br);
-      ctx.arcTo(x, y + h, x, y, bl);
-      ctx.arcTo(x, y, x + w, y, tl);
-      ctx.closePath();
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
-    }
-
-    $.rect = function (x, y, w, h, tl, tr, br, bl) {
-      if ($._style.rectMode == $.CENTER) {
-        roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.RADIUS) {
-        roundedRectImpl(x - w, y - h, w * 2, h * 2, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.CORNER) {
-        roundedRectImpl(x, y, w, h, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.CORNERS) {
-        roundedRectImpl(x, y, w - x, h - y, tl, tr, br, bl);
-      }
-    };
-    $.square = function (x, y, s, tl, tr, br, bl) {
-      return $.rect(x, y, s, s, tl, tr, br, bl);
-    };
-
-    function clearBuff() {
-      curveBuff = [];
-    }
-
-    $.beginShape = function () {
-      clearBuff();
-      ctx.beginPath();
-      firstVertex = true;
-    };
-    $.beginContour = function () {
-      ctx.closePath();
-      clearBuff();
-      firstVertex = true;
-    };
-    $.endContour = function () {
-      clearBuff();
-      firstVertex = true;
-    };
-    $.vertex = function (x, y) {
-      clearBuff();
-      if (firstVertex) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-      firstVertex = false;
-    };
-    $.bezierVertex = function (cp1x, cp1y, cp2x, cp2y, x, y) {
-      clearBuff();
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
-    };
-    $.quadraticVertex = function (cp1x, cp1y, x, y) {
-      clearBuff();
-      ctx.quadraticCurveTo(cp1x, cp1y, x, y);
-    };
-    $.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.bezierVertex(x2, y2, x3, y3, x4, y4);
-      $.endShape();
-    };
-    $.triangle = function (x1, y1, x2, y2, x3, y3) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.vertex(x2, y2);
-      $.vertex(x3, y3);
-      $.endShape($.CLOSE);
-    };
-    $.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.vertex(x2, y2);
-      $.vertex(x3, y3);
-      $.vertex(x4, y4);
-      $.endShape($.CLOSE);
-    };
-    $.endShape = function (close) {
-      clearBuff();
-      if (close) {
-        ctx.closePath();
-      }
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
-      if ($._style.noFill && $._style.noStroke) {
-        // eh.
-        ctx.save();
-        ctx.fillStyle = 'none';
-        ctx.fill();
-        ctx.restore();
-      }
-    };
-    function catmullRomSpline(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, numPts, alpha) {
-      //https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline
-      function catmullromSplineGetT(t, p0x, p0y, p1x, p1y, alpha) {
-        let a = Math.pow(p1x - p0x, 2.0) + Math.pow(p1y - p0y, 2.0);
-        let b = Math.pow(a, alpha * 0.5);
-        return b + t;
-      }
-      let pts = [];
-
-      let t0 = 0.0;
-      let t1 = catmullromSplineGetT(t0, p0x, p0y, p1x, p1y, alpha);
-      let t2 = catmullromSplineGetT(t1, p1x, p1y, p2x, p2y, alpha);
-      let t3 = catmullromSplineGetT(t2, p2x, p2y, p3x, p3y, alpha);
-
-      for (let i = 0; i < numPts; i++) {
-        let t = t1 + (i / (numPts - 1)) * (t2 - t1);
-        let s = [
-          (t1 - t) / (t1 - t0),
-          (t - t0) / (t1 - t0),
-          (t2 - t) / (t2 - t1),
-          (t - t1) / (t2 - t1),
-          (t3 - t) / (t3 - t2),
-          (t - t2) / (t3 - t2),
-          (t2 - t) / (t2 - t0),
-          (t - t0) / (t2 - t0),
-          (t3 - t) / (t3 - t1),
-          (t - t1) / (t3 - t1),
-        ];
-        for (let j = 0; j < s.length; j += 2) {
-          if (isNaN(s[j])) {
-            s[j] = 1;
-            s[j + 1] = 0;
-          }
-          if (!isFinite(s[j])) {
-            if (s[j] > 0) {
-              s[j] = 1;
-              s[j + 1] = 0;
-            } else {
-              s[j] = 0;
-              s[j + 1] = 1;
-            }
-          }
-        }
-        let a1x = p0x * s[0] + p1x * s[1];
-        let a1y = p0y * s[0] + p1y * s[1];
-        let a2x = p1x * s[2] + p2x * s[3];
-        let a2y = p1y * s[2] + p2y * s[3];
-        let a3x = p2x * s[4] + p3x * s[5];
-        let a3y = p2y * s[4] + p3y * s[5];
-        let b1x = a1x * s[6] + a2x * s[7];
-        let b1y = a1y * s[6] + a2y * s[7];
-        let b2x = a2x * s[8] + a3x * s[9];
-        let b2y = a2y * s[8] + a3y * s[9];
-        let cx = b1x * s[2] + b2x * s[3];
-        let cy = b1y * s[2] + b2y * s[3];
-        pts.push([cx, cy]);
-      }
-      return pts;
-    }
-
-    $.curveVertex = function (x, y) {
-      curveBuff.push([x, y]);
-      if (curveBuff.length < 4) {
-        return;
-      }
-      let p0 = curveBuff[curveBuff.length - 4];
-      let p1 = curveBuff[curveBuff.length - 3];
-      let p2 = curveBuff[curveBuff.length - 2];
-      let p3 = curveBuff[curveBuff.length - 1];
-      let pts = catmullRomSpline(
-        ...p0,
-        ...p1,
-        ...p2,
-        ...p3,
-        $._style.curveDetail,
-        $._style.curveAlpha
-      );
-      for (let i = 0; i < pts.length; i++) {
-        if (firstVertex) {
-          ctx.moveTo(...pts[i]);
-        } else {
-          ctx.lineTo(...pts[i]);
-        }
-        firstVertex = false;
-      }
-    };
-    $.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.curveVertex(x1, y1);
-      $.curveVertex(x2, y2);
-      $.curveVertex(x3, y3);
-      $.curveVertex(x4, y4);
-      $.endShape();
-    };
-
-    //================================================================
-    // DRAWING MATRIX
-    //================================================================
-    $.translate = function (x, y) {
-      ctx.translate(x, y);
-    };
-    $.rotate = function (r) {
-      ctx.rotate(r);
-    };
-    $.scale = function (x, y) {
-      if (y == undefined) {
-        y = x;
-      }
-      ctx.scale(x, y);
-    };
-    $.applyMatrix = function (a, b, c, d, e, f) {
-      ctx.transform(a, b, c, d, e, f);
-    };
-    $.shearX = function (ang) {
-      ctx.transform(1, 0, Math.tan(ang), 1, 0, 0);
-    };
-    $.shearY = function (ang) {
-      ctx.transform(1, Math.tan(ang), 0, 1, 0, 0);
-    };
-
-    $.resetMatrix = function () {
-      ctx.resetTransform();
-      ctx.scale($._pixelDensity, $._pixelDensity);
-    };
-
-    $.pushMatrix = $.push = function () {
-      $._styleCache.push({ ...$._style });
-      $._style = $._styleCache[$._styleCache.length - 1];
-      ctx.save();
-    };
-    $.popMatrix = $.pop = function () {
-      if ($._styleCache.length - 1) {
-        $._styleCache.pop();
-        $._style = $._styleCache[$._styleCache.length - 1];
-        ctx.restore();
-      }
-    };
-
-    //================================================================
-    // IMAGING
-    //================================================================
-    $.image = function (img, dx, dy, dWidth, dHeight, sx, sy, sWidth, sHeight) {
-      let drawable = img.MAGIC == $.MAGIC ? img.canvas : img;
-      function reset() {
-        if (img.MAGIC != $.MAGIC || !$._tint) {
-          return;
-        }
-        let c = img.canvas.getContext('2d');
-        c.save();
-        c.resetTransform();
-        c.clearRect(0, 0, c.canvas.width, c.canvas.height);
-        c.drawImage(tmpCt2.canvas, 0, 0);
-        c.restore();
-      }
-      if (img.MAGIC == $.MAGIC && $._tint != null) {
-        makeTmpCt2(img.canvas.width, img.canvas.height);
-        tmpCt2.drawImage(img.canvas, 0, 0);
-        img.tinted($._tint);
-      }
-      if (!dWidth) {
-        if (img.MAGIC == $.MAGIC || img.width) {
-          ctx.drawImage(drawable, dx, dy, img.width, img.height);
-        } else {
-          ctx.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
-        }
-        reset();
-        return;
-      }
-      if (!sx) {
-        ctx.drawImage(drawable, dx, dy, dWidth, dHeight);
-        reset();
-        return;
-      }
-      if (!sWidth) {
-        sWidth = drawable.width;
-      }
-      if (!sHeight) {
-        sHeight = drawable.height;
-      }
-      ctx.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-      reset();
-    };
-
-    $.loadPixels = function () {
-      imgData = ctx.getImageData(0, 0, $.canvas.width, $.canvas.height);
-      $.pixels = imgData.data;
-    };
-    $.updatePixels = function () {
-      if (imgData != null) {
-        ctx.putImageData(imgData, 0, 0);
-      }
-    };
-
-    $.loadImage = function (url, callback) {
-      preloadCnt++;
-      let g = $.createGraphics(100, 100);
-      let c = g.canvas.getContext('2d');
-      let img = new Image();
-      img.src = url;
-      img.crossOrigin = 'Anonymous';
-      img.onload = function () {
-        c.canvas.width = img.width;
-        c.canvas.height = img.height;
-        g.width = img.width;
-        g.height = img.height;
-        c.drawImage(img, 0, 0);
-        preloadCnt--;
-        if (callback) {
-          callback(g);
-        }
-      };
-      return g;
-    };
-
-    let filterImpl = {};
-    filterImpl[$.THRESHOLD] = function (data, thresh) {
+    this.filterImpl[this.THRESHOLD] = function (data: Array<number>, thresh: number) {
       if (thresh == undefined) {
         thresh = 127.5;
       } else {
@@ -1392,25 +435,25 @@ class BaseSketch {
         data[i] = data[i + 1] = data[i + 2] = gray >= thresh ? 255 : 0;
       }
     };
-    filterImpl[$.GRAY] = function (data) {
+    this.filterImpl[this.GRAY] = function (data: Array<number>) {
       for (let i = 0; i < data.length; i += 4) {
         const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
         data[i] = data[i + 1] = data[i + 2] = gray;
       }
     };
-    filterImpl[$.OPAQUE] = function (data) {
+    this.filterImpl[this.OPAQUE] = function (data: Array<number>) {
       for (let i = 0; i < data.length; i += 4) {
         data[i + 3] = 255;
       }
     };
-    filterImpl[$.INVERT] = function (data) {
+    this.filterImpl[this.INVERT] = function (data: Array<number>) {
       for (let i = 0; i < data.length; i += 4) {
         data[i] = 255 - data[i];
         data[i + 1] = 255 - data[i + 1];
         data[i + 2] = 255 - data[i + 2];
       }
     };
-    filterImpl[$.POSTERIZE] = function (data, lvl) {
+    this.filterImpl[this.POSTERIZE] = function (data: Array<number>, lvl: number) {
       let lvl1 = lvl - 1;
       for (let i = 0; i < data.length; i += 4) {
         data[i] = (((data[i] * lvl) >> 8) * 255) / lvl1;
@@ -1419,10 +462,10 @@ class BaseSketch {
       }
     };
 
-    filterImpl[$.DILATE] = function (data) {
-      makeTmpBuf();
-      tmpBuf.set(data);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
+    this.filterImpl[this.DILATE] = (data: Array<number>) => {
+      this.makeTmpBuf();
+      this.tmpBuf.set(data);
+      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
       for (let i = 0; i < h; i++) {
         for (let j = 0; j < w; j++) {
           let l = 4 * Math.max(j - 1, 0);
@@ -1436,20 +479,21 @@ class BaseSketch {
             let kb = k + b;
             let ko = k + oi;
             data[oi + oj + k] = Math.max(
-              /*tmpBuf[kt+l],*/ tmpBuf[kt + oj] /*tmpBuf[kt+r],*/,
-              tmpBuf[ko + l],
-              tmpBuf[ko + oj],
-              tmpBuf[ko + r],
-              /*tmpBuf[kb+l],*/ tmpBuf[kb + oj] /*tmpBuf[kb+r],*/
+              /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
+              this.tmpBuf[ko + l],
+              this.tmpBuf[ko + oj],
+              this.tmpBuf[ko + r],
+              /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
             );
           }
         }
       }
     };
-    filterImpl[$.ERODE] = function (data) {
-      makeTmpBuf();
-      tmpBuf.set(data);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
+
+    this.filterImpl[this.ERODE] = (data: Array<number>) => {
+      this.makeTmpBuf();
+      this.tmpBuf.set(data);
+      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
       for (let i = 0; i < h; i++) {
         for (let j = 0; j < w; j++) {
           let l = 4 * Math.max(j - 1, 0);
@@ -1463,26 +507,26 @@ class BaseSketch {
             let kb = k + b;
             let ko = k + oi;
             data[oi + oj + k] = Math.min(
-              /*tmpBuf[kt+l],*/ tmpBuf[kt + oj] /*tmpBuf[kt+r],*/,
-              tmpBuf[ko + l],
-              tmpBuf[ko + oj],
-              tmpBuf[ko + r],
-              /*tmpBuf[kb+l],*/ tmpBuf[kb + oj] /*tmpBuf[kb+r],*/
+              /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
+              this.tmpBuf[ko + l],
+              this.tmpBuf[ko + oj],
+              this.tmpBuf[ko + r],
+              /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
             );
           }
         }
       }
     };
 
-    filterImpl[$.BLUR] = function (data, rad) {
+    this.filterImpl[this.BLUR] = (data: Array<number>, rad: number) => {
       rad = rad || 1;
-      rad = Math.floor(rad * $._pixelDensity);
-      makeTmpBuf();
-      tmpBuf.set(data);
+      rad = Math.floor(rad * this._pixelDensity);
+      this.makeTmpBuf();
+      this.tmpBuf.set(data);
 
       let ksize = rad * 2 + 1;
 
-      function gauss1d(ksize) {
+      function gauss1d(ksize: number) {
         let im = new Float32Array(ksize);
         let sigma = 0.3 * rad + 0.8;
         let ss2 = sigma * sigma * 2;
@@ -1495,7 +539,7 @@ class BaseSketch {
       }
 
       let kern = gauss1d(ksize);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
+      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
       for (let i = 0; i < h; i++) {
         for (let j = 0; j < w; j++) {
           let s0 = 0,
@@ -1505,10 +549,10 @@ class BaseSketch {
           for (let k = 0; k < ksize; k++) {
             let jk = Math.min(Math.max(j - rad + k, 0), w - 1);
             let idx = 4 * (i * w + jk);
-            s0 += tmpBuf[idx] * kern[k];
-            s1 += tmpBuf[idx + 1] * kern[k];
-            s2 += tmpBuf[idx + 2] * kern[k];
-            s3 += tmpBuf[idx + 3] * kern[k];
+            s0 += this.tmpBuf[idx] * kern[k];
+            s1 += this.tmpBuf[idx + 1] * kern[k];
+            s2 += this.tmpBuf[idx + 2] * kern[k];
+            s3 += this.tmpBuf[idx + 3] * kern[k];
           }
           let idx = 4 * (i * w + j);
           data[idx] = s0;
@@ -1517,7 +561,7 @@ class BaseSketch {
           data[idx + 3] = s3;
         }
       }
-      tmpBuf.set(data);
+      this.tmpBuf.set(data);
       for (let i = 0; i < h; i++) {
         for (let j = 0; j < w; j++) {
           let s0 = 0,
@@ -1527,10 +571,10 @@ class BaseSketch {
           for (let k = 0; k < ksize; k++) {
             let ik = Math.min(Math.max(i - rad + k, 0), h - 1);
             let idx = 4 * (ik * w + j);
-            s0 += tmpBuf[idx] * kern[k];
-            s1 += tmpBuf[idx + 1] * kern[k];
-            s2 += tmpBuf[idx + 2] * kern[k];
-            s3 += tmpBuf[idx + 3] * kern[k];
+            s0 += this.tmpBuf[idx] * kern[k];
+            s1 += this.tmpBuf[idx + 1] * kern[k];
+            s2 += this.tmpBuf[idx + 2] * kern[k];
+            s3 += this.tmpBuf[idx + 3] * kern[k];
           }
           let idx = 4 * (i * w + j);
           data[idx] = s0;
@@ -1541,648 +585,24 @@ class BaseSketch {
       }
     };
 
-    function makeTmpCtx(w, h) {
-      if (tmpCtx == null) {
-        tmpCtx = document.createElement('canvas').getContext('2d');
-        // document.body.appendChild(tmpCtx.canvas)
-      }
-      if (w == undefined) {
-        w = ctx.canvas.width;
-        h = ctx.canvas.height;
-      }
-      if (tmpCtx.canvas.width != w || tmpCtx.canvas.height != h) {
-        tmpCtx.canvas.width = w;
-        tmpCtx.canvas.height = h;
-      }
-    }
-    function makeTmpCt2(w, h) {
-      if (tmpCt2 == null) {
-        tmpCt2 = document.createElement('canvas').getContext('2d');
-        // document.body.appendChild(tmpCt2.canvas)
-      }
-      if (w == undefined) {
-        w = ctx.canvas.width;
-        h = ctx.canvas.height;
-      }
-      if (tmpCt2.canvas.width != w || tmpCt2.canvas.height != h) {
-        tmpCt2.canvas.width = w;
-        tmpCt2.canvas.height = h;
-      }
-    }
-
-    function makeTmpBuf() {
-      let l = ctx.canvas.width * ctx.canvas.height * 4;
-      if (tmpBuf == null || l != tmpBuf.length) {
-        tmpBuf = new Uint8ClampedArray(l);
-      }
-    }
-
-    function nativeFilter(filtstr) {
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.filter = filtstr;
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.restore();
-    }
-
-    $.filter = function (typ, x) {
-      let support = $.HARDWARE_FILTERS && ctx.filter != undefined;
-      if (support) {
-        makeTmpCtx();
-        if (typ == $.THRESHOLD) {
-          if (x == undefined) {
-            x = 0.5;
-          }
-          x = Math.max(x, 0.00001);
-          let b = Math.floor((0.5 / x) * 100);
-          nativeFilter(`saturate(0%) brightness(${b}%) contrast(1000000%)`);
-        } else if (typ == $.GRAY) {
-          nativeFilter(`saturate(0%)`);
-        } else if (typ == $.OPAQUE) {
-          tmpCtx.fillStyle = 'black';
-          tmpCtx.fillRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-          tmpCtx.drawImage(ctx.canvas, 0, 0);
-          ctx.save();
-          ctx.resetTransform();
-          ctx.drawImage(tmpCtx.canvas, 0, 0);
-          ctx.restore();
-        } else if (typ == $.INVERT) {
-          nativeFilter(`invert(100%)`);
-        } else if (typ == $.BLUR) {
-          nativeFilter(`blur(${Math.ceil((x * $._pixelDensity) / 1) || 1}px)`);
-        } else {
-          let imgData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-          filterImpl[typ](imgData.data, x);
-          ctx.putImageData(imgData, 0, 0);
-        }
-      } else {
-        let imgData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        filterImpl[typ](imgData.data, x);
-        ctx.putImageData(imgData, 0, 0);
-      }
-    };
-
-    $.resize = function (w, h) {
-      makeTmpCtx();
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      $.width = w;
-      $.height = h;
-      ctx.canvas.width = w * $._pixelDensity;
-      ctx.canvas.height = h * $._pixelDensity;
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.restore();
-    };
-
-    $.get = function (x, y, w, h) {
-      if (x != undefined && w == undefined) {
-        let c = ctx.getImageData(x, y, 1, 1).data;
-        return new $.Color(c[0], c[1], c[2], c[3] / 255);
-      }
-      x = x || 0;
-      y = y || 0;
-      w = w || $.width;
-      h = h || $.height;
-      let g = $.createGraphics(w, h);
-      g.pixelDensity($._pixelDensity);
-      let imgData = ctx.getImageData(
-        x * $._pixelDensity,
-        y * $._pixelDensity,
-        w * $._pixelDensity,
-        h * $._pixelDensity
-      );
-      g.canvas.getContext('2d').putImageData(imgData, 0, 0);
-      return g;
-    };
-
-    $.set = function (x, y, c) {
-      if (c.MAGIC == $.MAGIC) {
-        let old = $._tint;
-        $._tint = null;
-        $.image(c, x, y);
-        $._tint = old;
-        return;
-      }
-      let idx = 4 * (y * $._pixelDensity * ctx.canvas.width + x * $._pixelDensity);
-      $.pixels[idx] = c._r;
-      $.pixels[idx + 1] = c._g;
-      $.pixels[idx + 2] = c._b;
-      $.pixels[idx + 3] = c._a * 255;
-    };
-
-    $.tinted = function () {
-      let col = $.color(...Array.from(arguments));
-      let alpha = col._a;
-      col._a = 1;
-      makeTmpCtx();
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.fillStyle = col;
-      tmpCtx.fillRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.globalCompositeOperation = 'multiply';
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      tmpCtx.globalCompositeOperation = 'source-over';
-
-      ctx.save();
-      ctx.resetTransform();
-      let old = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.globalCompositeOperation = old;
-      ctx.restore();
-
-      tmpCtx.globalAlpha = alpha;
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      tmpCtx.globalAlpha = 1;
-
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.restore();
-    };
-
-    $.tint = function () {
-      $._tint = $.color(...Array.from(arguments));
-    };
-
-    $.noTint = function () {
-      $._tint = null;
-    };
-
-    $.mask = function (img) {
-      ctx.save();
-      ctx.resetTransform();
-      let old = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'destination-in';
-      ctx.drawImage(img.canvas, 0, 0);
-      ctx.globalCompositeOperation = old;
-      ctx.restore();
-    };
-
-    $.clearTemporaryBuffers = function () {
-      tmpCtx = null;
-      tmpCt2 = null;
-      tmpBuf = null;
-    };
-
-    $.save = function (name, ext) {
-      name = name || 'untitled';
-      ext = ext || 'png';
-      var down = document.createElement('a');
-      down.innerHTML = '[Download]';
-      down.addEventListener(
-        'click',
-        function () {
-          this.href = ctx.canvas.toDataURL();
-          this.download = name + '.' + ext;
-        },
-        false
-      );
-      document.body.appendChild(down);
-      down.click();
-      document.body.removeChild(down);
-    };
-    $.saveCanvas = function (a, b, c) {
-      if (a.MAGIC == $.MAGIC) {
-        if (c) {
-          a.save(b, c);
-        }
-        let s = b.split('.');
-        return a.save(s.slice(0, -1).join('.'), s[s.length - 1]);
-      }
-      if (b) {
-        return $.save(a, b);
-      }
-      let s = a.split('.');
-      return $.save(s.slice(0, -1).join('.'), s[s.length - 1]);
-    };
-
-    //================================================================
-    // TYPOGRAPHY
-    //================================================================
-
-    $.loadFont = function (url, callback) {
-      let sp = url.split('/');
-      let name = sp[sp.length - 1].split('.')[0].replace(' ', '');
-      let cssStr = `@font-face {
-        font-family: '${name}';
-        src: url('${url}');
-      }`;
-      const style = document.createElement('style');
-      style.textContent = cssStr;
-      document.head.append(style);
-      return name;
-    };
-    $.textFont = function (x) {
-      $._style.textFont = x;
-    };
-    $.textSize = function (x) {
-      $._style.textSize = x;
-      $._style.textLeading = x;
-    };
-    $.textLeading = function (x) {
-      $._style.textLeading = x;
-    };
-    $.textStyle = function (x) {
-      $._style.textStyle = x;
-    };
-    $.textAlign = function (horiz, vert) {
-      ctx.textAlign = horiz;
-      if (vert) {
-        ctx.textBaseline = vert == $.CENTER ? 'middle' : vert;
-      }
-    };
-    $.text = function (str, x, y, w) {
-      if (!str) {
-        return;
-      }
-      str = str.toString();
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      let lines = str.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (!$._style.noFill) {
-          ctx.fillText(lines[i], x, y, w);
-        }
-        if (!$._style.noStroke) {
-          ctx.strokeText(lines[i], x, y, w);
-        }
-        y += $._style.textLeading;
-      }
-    };
-    $.textWidth = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).width;
-    };
-    $.textAscent = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).actualBoundingBoxAscent;
-    };
-    $.textDescent = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).actualBoundingBoxDescent;
-    };
-
-    //================================================================
-    // RANDOM
-    //================================================================
-
-    //https://github.com/processing/p5.js/blob/1.1.9/src/math/noise.js
-    var PERLIN_YWRAPB = 4;
-    var PERLIN_YWRAP = 1 << PERLIN_YWRAPB;
-    var PERLIN_ZWRAPB = 8;
-    var PERLIN_ZWRAP = 1 << PERLIN_ZWRAPB;
-    var PERLIN_SIZE = 4095;
-    var perlin_octaves = 4;
-    var perlin_amp_falloff = 0.5;
-    var scaled_cosine = function (i) {
+    this.PERLIN_YWRAPB = 4;
+    this.PERLIN_YWRAP = 1 << this.PERLIN_YWRAPB;
+    this.PERLIN_ZWRAPB = 8;
+    this.PERLIN_ZWRAP = 1 << this.PERLIN_ZWRAPB;
+    this.PERLIN_SIZE = 4095;
+    this.perlin_octaves = 4;
+    this.perlin_amp_falloff = 0.5;
+    this.scaled_cosine = function (i: number) {
       return 0.5 * (1.0 - Math.cos(i * Math.PI));
     };
-    var p_perlin;
+    this.p_perlin;
 
-    $.noise = function (x, y, z) {
-      y = y || 0;
-      z = z || 0;
-      if (p_perlin == null) {
-        p_perlin = new Array(PERLIN_SIZE + 1);
-        for (var i = 0; i < PERLIN_SIZE + 1; i++) {
-          p_perlin[i] = Math.random();
-        }
-      }
-      if (x < 0) {
-        x = -x;
-      }
-      if (y < 0) {
-        y = -y;
-      }
-      if (z < 0) {
-        z = -z;
-      }
-      var xi = Math.floor(x),
-        yi = Math.floor(y),
-        zi = Math.floor(z);
-      var xf = x - xi;
-      var yf = y - yi;
-      var zf = z - zi;
-      var rxf, ryf;
-      var r = 0;
-      var ampl = 0.5;
-      var n1, n2, n3;
-      for (var o = 0; o < perlin_octaves; o++) {
-        var of = xi + (yi << PERLIN_YWRAPB) + (zi << PERLIN_ZWRAPB);
-        rxf = scaled_cosine(xf);
-        ryf = scaled_cosine(yf);
-        n1 = p_perlin[of & PERLIN_SIZE];
-        n1 += rxf * (p_perlin[(of + 1) & PERLIN_SIZE] - n1);
-        n2 = p_perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-        n2 += rxf * (p_perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n2);
-        n1 += ryf * (n2 - n1);
-        of += PERLIN_ZWRAP;
-        n2 = p_perlin[of & PERLIN_SIZE];
-        n2 += rxf * (p_perlin[(of + 1) & PERLIN_SIZE] - n2);
-        n3 = p_perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-        n3 += rxf * (p_perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n3);
-        n2 += ryf * (n3 - n2);
-        n1 += scaled_cosine(zf) * (n2 - n1);
-        r += n1 * ampl;
-        ampl *= perlin_amp_falloff;
-        xi <<= 1;
-        xf *= 2;
-        yi <<= 1;
-        yf *= 2;
-        zi <<= 1;
-        zf *= 2;
-        if (xf >= 1.0) {
-          xi++;
-          xf--;
-        }
-        if (yf >= 1.0) {
-          yi++;
-          yf--;
-        }
-        if (zf >= 1.0) {
-          zi++;
-          zf--;
-        }
-      }
-      return r;
-    };
+    this.rng1 = new Shr3();
+    this.rng1.setSeed();
 
-    $.noiseDetail = function (lod, falloff) {
-      if (lod > 0) {
-        perlin_octaves = lod;
-      }
-      if (falloff > 0) {
-        perlin_amp_falloff = falloff;
-      }
-    };
-    const Lcg = function () {
-      const m = 4294967296;
-      const a = 1664525;
-      const c = 1013904223;
-      let seed, z;
-      return {
-        setSeed(val) {
-          z = seed = (val == null ? Math.random() * m : val) >>> 0;
-        },
-        getSeed() {
-          return seed;
-        },
-        rand() {
-          z = (a * z + c) % m;
-          return z / m;
-        },
-      };
-    };
-    const Shr3 = function () {
-      let jsr, seed;
-      let m = 4294967295;
-      return {
-        setSeed(val) {
-          jsr = seed = (val == null ? Math.random() * m : val) >>> 0;
-        },
-        getSeed() {
-          return seed;
-        },
-        rand() {
-          jsr ^= jsr << 17;
-          jsr ^= jsr >> 13;
-          jsr ^= jsr << 5;
-          return (jsr >>> 0) / m;
-        },
-      };
-    };
-    let rng1 = Shr3();
-    rng1.setSeed();
+    this.ziggurat = new Ziggurat(this.rng1);
 
-    $.noiseSeed = function (seed) {
-      let jsr = seed == undefined ? Math.random() * 4294967295 : seed;
-      if (!p_perlin) {
-        p_perlin = new Float32Array(PERLIN_SIZE + 1);
-      }
-      for (var i = 0; i < PERLIN_SIZE + 1; i++) {
-        jsr ^= jsr << 17;
-        jsr ^= jsr >> 13;
-        jsr ^= jsr << 5;
-        p_perlin[i] = (jsr >>> 0) / 4294967295;
-      }
-    };
-    $.randomSeed = function (seed) {
-      rng1.setSeed(seed);
-    };
-    $.random = function (a, b) {
-      if (a == undefined) {
-        return rng1.rand();
-      }
-      if (typeof a == 'number') {
-        if (b != undefined) {
-          return rng1.rand() * (b - a) + a;
-        } else {
-          return rng1.rand() * a;
-        }
-      } else {
-        return a[~~(a.length * rng1.rand())];
-      }
-    };
-    $.randomGenerator = function (method) {
-      if (method == $.LCG) {
-        rng1 = Lcg();
-      } else if (method == $.SHR3) {
-        rng1 = Shr3();
-      }
-      rng1.setSeed();
-    };
-
-    var ziggurat = new (function () {
-      //http://ziggurat.glitch.me/
-      var iz;
-      var jz;
-      var kn = new Array(128);
-      var ke = new Array(256);
-      var hz;
-      var wn = new Array(128);
-      var fn = new Array(128);
-      var we = new Array(256);
-      var fe = new Array(256);
-      var SHR3 = function () {
-        return rng1.rand() * 4294967296 - 2147483648;
-      };
-      var UNI = function () {
-        return 0.5 + (SHR3() << 0) * 0.2328306e-9;
-      };
-
-      var RNOR = function () {
-        hz = SHR3();
-        iz = hz & 127;
-        return Math.abs(hz) < kn[iz] ? hz * wn[iz] : nfix();
-      };
-      var REXP = function () {
-        jz = SHR3() >>> 0;
-        iz = jz & 255;
-        return jz < kn[iz] ? jz * we[iz] : efix();
-      };
-      var nfix = function () {
-        var r = 3.44262;
-        var x, y;
-        var u1, u2;
-        for (;;) {
-          x = hz * wn[iz];
-          if (iz == 0) {
-            do {
-              u1 = UNI();
-              u2 = UNI();
-              x = -Math.log(u1) * 0.2904764;
-              y = -Math.log(u2);
-            } while (y + y < x * x);
-            return hz > 0 ? r + x : -r - x;
-          }
-
-          if (fn[iz] + UNI() * (fn[iz - 1] - fn[iz]) < Math.exp(-0.5 * x * x)) {
-            return x;
-          }
-          hz = SHR3();
-          iz = hz & 127;
-          if (Math.abs(hz) < kn[iz]) {
-            return hz * wn[iz];
-          }
-        }
-      };
-      var efix = function () {
-        var x;
-        for (;;) {
-          if (iz == 0) {
-            return 7.69711 - Math.log(UNI());
-          }
-          x = jz * we[iz];
-          if (fe[iz] + UNI() * (fe[iz - 1] - fe[iz]) < Math.exp(-x)) {
-            return x;
-          }
-          jz = SHR3();
-          iz = jz & 255;
-          if (jz < ke[iz]) {
-            return jz * we[iz];
-          }
-        }
-      };
-
-      var zigset = function () {
-        var m1 = 2147483648;
-        var m2 = 4294967296;
-        var dn = 3.442619855899;
-        var tn = dn;
-        var vn = 9.91256303526217e-3;
-        var q;
-        var de = 7.697117470131487;
-        var te = de;
-        var ve = 3.949659822581572e-3;
-        var i;
-
-        /* Tables for RNOR */
-        q = vn / Math.exp(-0.5 * dn * dn);
-        kn[0] = Math.floor((dn / q) * m1);
-        kn[1] = 0;
-        wn[0] = q / m1;
-        wn[127] = dn / m1;
-        fn[0] = 1;
-        fn[127] = Math.exp(-0.5 * dn * dn);
-        for (i = 126; i >= 1; i--) {
-          dn = Math.sqrt(-2 * Math.log(vn / dn + Math.exp(-0.5 * dn * dn)));
-          kn[i + 1] = Math.floor((dn / tn) * m1);
-          tn = dn;
-          fn[i] = Math.exp(-0.5 * dn * dn);
-          wn[i] = dn / m1;
-        }
-        /*Tables for REXP */
-        q = ve / Math.exp(-de);
-        ke[0] = Math.floor((de / q) * m2);
-        ke[1] = 0;
-        we[0] = q / m2;
-        we[255] = de / m2;
-        fe[0] = 1;
-        fe[255] = Math.exp(-de);
-        for (i = 254; i >= 1; i--) {
-          de = -Math.log(ve / de + Math.exp(-de));
-          ke[i + 1] = Math.floor((de / te) * m2);
-          te = de;
-          fe[i] = Math.exp(-de);
-          we[i] = de / m2;
-        }
-      };
-      this.SHR3 = SHR3;
-      this.UNI = UNI;
-      this.RNOR = RNOR;
-      this.REXP = REXP;
-      this.zigset = zigset;
-    })();
-    ziggurat.hasInit = false;
-
-    $.randomGaussian = function (mean, std) {
-      if (!ziggurat.hasInit) {
-        ziggurat.zigset();
-        ziggurat.hasInit = true;
-      }
-      return ziggurat.RNOR() * std + mean;
-    };
-
-    $.randomExponential = function () {
-      if (!ziggurat.hasInit) {
-        ziggurat.zigset();
-        ziggurat.hasInit = true;
-      }
-      return ziggurat.REXP();
-    };
-
-    //================================================================
-    // ENVIRONMENT
-    //================================================================
-
-    $.print = console.log;
-    $.cursor = function (name, x, y) {
-      let pfx = '';
-      if (name.includes('.')) {
-        name = `url("${name}")`;
-        pfx = ', auto';
-      }
-      if (x != undefined) {
-        name += ' ' + x + ' ' + y;
-      }
-      $.canvas.style.cursor = name + pfx;
-    };
-    $.noCursor = function () {
-      $.canvas.style.cursor = 'none';
-    };
-
-    //================================================================
-    // DOM
-    //================================================================
-
-    $.createCapture = function (x) {
-      var vid = document.createElement('video');
-      vid.playsinline = 'playsinline';
-      vid.autoplay = 'autoplay';
-      navigator.mediaDevices.getUserMedia(x).then(function (stream) {
-        vid.srcObject = stream;
-      });
-      vid.style.position = 'absolute';
-      vid.style.opacity = 0.00001;
-      vid.style.zIndex = -1000;
-      document.body.appendChild(vid);
-      return vid;
-    };
-
-    //================================================================
-    // EVENTS
-    //================================================================
-
-    let eventNames = [
+    this.eventNames = [
       'setup',
       'draw',
       'preload',
@@ -2197,225 +617,146 @@ class BaseSketch {
       'touchStarted',
       'touchEnded',
     ];
-    for (let k of eventNames) {
+
+    for (let k of this.eventNames) {
       let intern = '_' + k + 'Fn';
-      $[intern] = function () {};
-      $[intern].isPlaceHolder = true;
-      if ($[k]) {
-        $[intern] = $[k];
+      this[intern] = function () {};
+      this[intern].isPlaceHolder = true;
+      if (this[k]) {
+        this[intern] = this[k];
       } else {
-        Object.defineProperty($, k, {
+        Object.defineProperty(this, k, {
           set: function (fun) {
-            $[intern] = fun;
+            this[intern] = fun;
           },
         });
       }
     }
 
-    function _draw() {
-      if (!$._noLoop) {
-        if ($._frameRate == null) {
-          looper = requestAnimationFrame(_draw);
-        } else {
-          looper = setTimeout(_draw, 1000 / $._frameRate);
-        }
-      }
-      clearBuff();
-      firstVertex = true;
-      $.push();
-      $._drawFn();
-      $.pop();
-      ++$.frameCount;
-    }
-
-    $.noLoop = function () {
-      $._noLoop = true;
-      looper = null;
-    };
-    $.loop = function () {
-      $._noLoop = false;
-      if (looper == null) {
-        _draw();
-      }
-    };
-    $.redraw = function () {
-      _draw();
-    };
-    $.frameRate = function (fps) {
-      $._frameRate = fps;
-    };
-
-    setTimeout(function () {
-      $._preloadFn();
-      millisStart = window.performance.now();
-      _start();
-      function _start() {
-        if (preloadCnt > 0) {
-          return setTimeout(_start, 10);
-        }
-        // ctx.save();
-        $._setupFn();
-        // ctx.restore();
-        _draw();
-      }
+    setTimeout(() => {
+      this._preloadFn();
+      this.millisStart = window.performance.now();
+      this._start();
     }, 1);
 
-    $.canvas.onmousemove = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
+    this.canvas.onmousemove = (event) => {
+      this.pmouseX = this.mouseX;
+      this.pmouseY = this.mouseY;
+      this.mouseX = event.offsetX;
+      this.mouseY = event.offsetY;
 
-      if ($.mouseIsPressed) {
-        $._mouseDraggedFn(event);
+      if (this.mouseIsPressed) {
+        this._mouseDraggedFn(event);
       } else {
-        $._mouseMovedFn(event);
+        this._mouseMovedFn(event);
       }
     };
-    $.canvas.onmousedown = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = true;
-      $.mouseButton = [$.LEFT, $.CENTER, $.RIGHT][event.button];
-      $._mousePressedFn(event);
+    this.canvas.onmousedown = (event) => {
+      this.pmouseX = this.mouseX;
+      this.pmouseY = this.mouseY;
+      this.mouseX = event.offsetX;
+      this.mouseY = event.offsetY;
+      this.mouseIsPressed = true;
+      this.mouseButton = [this.LEFT, this.CENTER, this.RIGHT][event.button];
+      this._mousePressedFn(event);
     };
-    $.canvas.onmouseup = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = false;
-      $._mouseReleasedFn(event);
+    this.canvas.onmouseup = (event) => {
+      this.pmouseX = this.mouseX;
+      this.pmouseY = this.mouseY;
+      this.mouseX = event.offsetX;
+      this.mouseY = event.offsetY;
+      this.mouseIsPressed = false;
+      this._mouseReleasedFn(event);
     };
-    $.canvas.onclick = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = true;
-      $._mouseClickedFn(event);
-      $.mouseIsPressed = false;
+    this.canvas.onclick = (event) => {
+      this.pmouseX = this.mouseX;
+      this.pmouseY = this.mouseY;
+      this.mouseX = event.offsetX;
+      this.mouseY = event.offsetY;
+      this.mouseIsPressed = true;
+      this._mouseClickedFn(event);
+      this.mouseIsPressed = false;
     };
-    window.addEventListener('keydown', function (event) {
-      $.keyIsPressed = true;
-      $.key = event.key;
-      $.keyCode = event.keyCode;
-      keysHeld[$.keyCode] = true;
-      $._keyPressedFn(event);
+    window.addEventListener('keydown', (event) => {
+      this.keyIsPressed = true;
+      this.key = event.key;
+      this.keyCode = event.keyCode;
+      this.keysHeld[this.keyCode] = true;
+      this._keyPressedFn(event);
       if (event.key.length == 1) {
-        $._keyTypedFn(event);
+        this._keyTypedFn(event);
       }
     });
     window.addEventListener('keyup', function (event) {
-      $.keyIsPressed = false;
-      $.key = event.key;
-      $.keyCode = event.keyCode;
-      keysHeld[$.keyCode] = false;
-      $._keyReleasedFn(event);
+      this.keyIsPressed = false;
+      this.key = event.key;
+      this.keyCode = event.keyCode;
+      keysHeld[this.keyCode] = false;
+      this._keyReleasedFn(event);
     });
-    $.keyIsDown = function (x) {
-      return !!keysHeld[x];
-    };
 
-    function getTouchInfo(touch) {
-      const rect = $.canvas.getBoundingClientRect();
-      const sx = $.canvas.scrollWidth / $.width || 1;
-      const sy = $.canvas.scrollHeight / $.height || 1;
-      return {
-        x: (touch.clientX - rect.left) / sx,
-        y: (touch.clientY - rect.top) / sy,
-        id: touch.identifier,
-      };
-    }
-    function isTouchUnaware() {
-      return (
-        $._touchStarted.isPlaceHolder &&
-        $._touchMoved.isPlaceHolder &&
-        $._touchEnded.isPlaceHolder
-      );
-    }
-    $.canvas.ontouchstart = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = true;
-        $.mouseButton = $.LEFT;
-        if (!$._mousePressedFn(event)) {
+    this.canvas.ontouchstart = (event) => {
+      this.touches = event.touches.map(this.getTouchInfo);
+      if (this.isTouchUnaware()) {
+        this.pmouseX = this.mouseX;
+        this.pmouseY = this.mouseY;
+        this.mouseX = this.touches[0].x;
+        this.mouseY = this.touches[0].y;
+        this.mouseIsPressed = true;
+        this.mouseButton = this.LEFT;
+        if (!this._mousePressedFn(event)) {
           event.preventDefault();
         }
       }
-      if (!$._touchStartedFn(event)) {
+      if (!this._touchStartedFn(event)) {
         event.preventDefault();
       }
     };
-    $.canvas.ontouchmove = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = true;
-        $.mouseButton = $.LEFT;
-        if (!$._mouseDraggedFn(event)) {
+    this.canvas.ontouchmove = (event) => {
+      this.touches = event.touches.map(this.getTouchInfo);
+      if (this.isTouchUnaware()) {
+        this.pmouseX = this.mouseX;
+        this.pmouseY = this.mouseY;
+        this.mouseX = this.touches[0].x;
+        this.mouseY = this.touches[0].y;
+        this.mouseIsPressed = true;
+        this.mouseButton = this.LEFT;
+        if (!this._mouseDraggedFn(event)) {
           event.preventDefault();
         }
       }
-      if (!$._touchMovedFn(event)) {
-        event.preventDefault();
-      }
-    };
-    $.canvas.ontouchend = $.canvas.ontouchcancel = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = false;
-        if (!$._mouseReleasedFn(event)) {
-          event.preventDefault();
-        }
-      }
-      if (!$._touchEndedFn(event)) {
+      if (!this._touchMovedFn(event)) {
         event.preventDefault();
       }
     };
 
-    $.hasSensorPermission =
+    this.canvas.ontouchend = this.canvas.ontouchcancel = (event) => {
+      this.touches = event.touches.map(this.getTouchInfo);
+      if (this.isTouchUnaware()) {
+        this.pmouseX = this.mouseX;
+        this.pmouseY = this.mouseY;
+        this.mouseX = this.touches[0].x;
+        this.mouseY = this.touches[0].y;
+        this.mouseIsPressed = false;
+        if (!this._mouseReleasedFn(event)) {
+          event.preventDefault();
+        }
+      }
+      if (!this._touchEndedFn(event)) {
+        event.preventDefault();
+      }
+    };
+
+    this.hasSensorPermission =
       (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) ||
       !(DeviceOrientationEvent.requestPermission || DeviceMotionEvent.requestPermission);
-    $.requestSensorPermissions = function () {
-      if (DeviceOrientationEvent.requestPermission) {
-        DeviceOrientationEvent.requestPermission()
-          .then((response) => {
-            if (response == 'granted') {
-              if (DeviceMotionEvent.requestPermission) {
-                DeviceMotionEvent.requestPermission()
-                  .then((response) => {
-                    if (response == 'granted') {
-                      $.hasSensorPermission = true;
-                    }
-                  })
-                  .catch(alert);
-              }
-            }
-          })
-          .catch(alert);
-      }
-    };
 
     //================================================================
     // SENSORS
     //================================================================
 
     // 3d transformation helpers
-    let ROTX = (a) => [
+    let ROTX = (a:number) => [
       1,
       0,
       0,
@@ -2433,7 +774,7 @@ class BaseSketch {
       0,
       1,
     ];
-    let ROTY = (a) => [
+    let ROTY = (a: number) => [
       Math.cos(a),
       0,
       Math.sin(a),
@@ -2478,61 +819,42 @@ class BaseSketch {
         (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
     ];
 
-    window.ondeviceorientation = function (event) {
-      $.pRotationX = $.rotationX;
-      $.pRotationY = $.rotationY;
-      $.pRotationZ = $.rotationZ;
-      $.pRelRotationX = $.relRotationX;
-      $.pRelRotationY = $.relRotationY;
-      $.pRelRotationZ = $.relRotationZ;
+    window.ondeviceorientation = (event) => {
+      this.pRotationX = this.rotationX;
+      this.pRotationY = this.rotationY;
+      this.pRotationZ = this.rotationZ;
+      this.pRelRotationX = this.relRotationX;
+      this.pRelRotationY = this.relRotationY;
+      this.pRelRotationZ = this.relRotationZ;
 
-      $.rotationX = event.beta * (Math.PI / 180.0);
-      $.rotationY = event.gamma * (Math.PI / 180.0);
-      $.rotationZ = event.alpha * (Math.PI / 180.0);
-      $.relRotationX = [-$.rotationY, -$.rotationX, $.rotationY][
+      this.rotationX = event.beta * (Math.PI / 180.0);
+      this.rotationY = event.gamma * (Math.PI / 180.0);
+      this.rotationZ = event.alpha * (Math.PI / 180.0);
+      this.relRotationX = [-this.rotationY, -this.rotationX, this.rotationY][
         ~~(window.orientation / 90) + 1
       ];
-      $.relRotationY = [-$.rotationX, $.rotationY, $.rotationX][
+      this.relRotationY = [-this.rotationX, this.rotationY, this.rotationX][
         ~~(window.orientation / 90) + 1
       ];
-      $.relRotationZ = $.rotationZ;
+      this.relRotationZ = this.rotationZ;
     };
-    window.ondevicemotion = function (event) {
-      $.pAccelerationX = $.accelerationX;
-      $.pAccelerationY = $.accelerationY;
-      $.pAccelerationZ = $.accelerationZ;
+
+    window.ondevicemotion = (event) => {
+      this.pAccelerationX = this.accelerationX;
+      this.pAccelerationY = this.accelerationY;
+      this.pAccelerationZ = this.accelerationZ;
       if (!event.acceleration) {
         // devices that don't support plain acceleration
         // compute gravitational acceleration's component on X Y Z axes based on gyroscope
         // g = ~ 9.80665
-        let grav = TRFM(MULT(ROTY($.rotationY), ROTX($.rotationX)), [0, 0, -9.80665]);
-        $.accelerationX = event.accelerationIncludingGravity.x + grav[0];
-        $.accelerationY = event.accelerationIncludingGravity.y + grav[1];
-        $.accelerationZ = event.accelerationIncludingGravity.z - grav[2];
+        let grav = TRFM(
+          MULT(ROTY(this.rotationY), ROTX(this.rotationX)),
+          [0, 0, -9.80665]
+        );
+        this.accelerationX = event.accelerationIncludingGravity.x + grav[0];
+        this.accelerationY = event.accelerationIncludingGravity.y + grav[1];
+        this.accelerationZ = event.accelerationIncludingGravity.z - grav[2];
       }
-    };
-
-    //================================================================
-    // TIME
-    //================================================================
-
-    $.year = function () {
-      return new Date().getFullYear();
-    };
-    $.day = function () {
-      return new Date().getDay();
-    };
-    $.hour = function () {
-      return new Date().getHours();
-    };
-    $.minute = function () {
-      return new Date().getMinutes();
-    };
-    $.second = function () {
-      return new Date().getSeconds();
-    };
-    $.millis = function () {
-      return window.performance.now() - millisStart;
     };
   }
 
@@ -2627,31 +949,34 @@ class BaseSketch {
     return this.ctx;
   }
 
-  createCanvas(width, height): HTMLCanvasElement {
+  // hint(prop: string, val) {
+  //   this[prop] = val;
+  // }
+
+  createCanvas(width: number, height: number): HTMLCanvasElement {
     this.width = width;
     this.height = height;
     this.canvas.width = width;
     this.canvas.height = height;
-    defaultStyle();
+    this.defaultStyle();
     return this.canvas;
   }
 
-  resizeCanvas(width, height) {
+  resizeCanvas(width: number, height: number) {
     this.width = width;
     this.height = height;
     this.canvas.width = width;
     this.canvas.height = height;
   }
 
-  // TODO: Implement this function somehow
-  // createGraphics(width, height) {
-  //   let g = new graphics('offscreen');
-  //   g.createCanvas(width, height);
-  //   g.noLoop();
-  //   return g;
-  // };
+  createGraphics(width: number, height: number) {
+    let g = new Q5('offscreen');
+    g.createCanvas(width, height);
+    g.noLoop();
+    return g;
+  }
 
-  pixelDensity(n) {
+  pixelDensity(n?: number) {
     if (n == undefined) {
       return this._pixelDensity;
     }
@@ -2663,11 +988,18 @@ class BaseSketch {
     this.canvas.style.height = this.height + 'px';
 
     this.ctx.scale(this._pixelDensity, this._pixelDensity);
-    defaultStyle();
+    this.defaultStyle();
     return this._pixelDensity;
   }
 
-  map(value, istart, istop, ostart, ostop, clamp): number {
+  map(
+    value: number,
+    istart: number,
+    istop: number,
+    ostart: number,
+    ostop: number,
+    clamp?: number
+  ): number {
     let val = ostart + (ostop - ostart) * (((value - istart) * 1.0) / (istop - istart));
     if (!clamp) {
       return val;
@@ -2679,10 +1011,10 @@ class BaseSketch {
     }
   }
 
-  lerp(a, b, t) {
+  lerp(a: number, b: number, t: number) {
     return a * (1 - t) + b * t;
   }
-  constrain(x, lo, hi) {
+  constrain(x: number, lo: number, hi: number) {
     return Math.min(Math.max(x, lo), hi);
   }
   dist() {
@@ -2696,26 +1028,26 @@ class BaseSketch {
       );
     }
   }
-  norm(value, start, stop) {
-    return map(value, start, stop, 0, 1);
+  norm(value: number, start: number, stop: number) {
+    return this.map(value, start, stop, 0, 1);
   }
-  sq(x) {
+  sq(x: number) {
     return x * x;
   }
-  fract(x) {
+  fract(x: number) {
     return x - Math.floor(x);
   }
-  degrees(x) {
+  degrees(x: number) {
     return (x * 180) / Math.PI;
   }
-  radians(x) {
+  radians(x: number) {
     return (x * Math.PI) / 180;
   }
-  createVector(x, y, z) {
+  createVector(x: number, y: number, z: number) {
     return new Vector(x, y, z);
   }
 
-  curvePoint(a, b, c, d, t) {
+  curvePoint(a: number, b: number, c: number, d: number, t: number) {
     const t3 = t * t * t,
       t2 = t * t,
       f1 = -0.5 * t3 + t2 - 0.5 * t,
@@ -2724,7 +1056,7 @@ class BaseSketch {
       f4 = 0.5 * t3 - 0.5 * t2;
     return a * f1 + b * f2 + c * f3 + d * f4;
   }
-  bezierPoint(a, b, c, d, t) {
+  bezierPoint(a: number, b: number, c: number, d: number, t: number) {
     const adjustedT = 1 - t;
     return (
       Math.pow(adjustedT, 3) * a +
@@ -2733,7 +1065,7 @@ class BaseSketch {
       Math.pow(t, 3) * d
     );
   }
-  curveTangent(a, b, c, d, t) {
+  curveTangent(a: number, b: number, c: number, d: number, t: number) {
     const t2 = t * t,
       f1 = (-3 * t2) / 2 + 2 * t - 0.5,
       f2 = (9 * t2) / 2 - 5 * t,
@@ -2741,7 +1073,7 @@ class BaseSketch {
       f4 = (3 * t2) / 2 - t;
     return a * f1 + b * f2 + c * f3 + d * f4;
   }
-  bezierTangent(a, b, c, d, t) {
+  bezierTangent(a: number, b: number, c: number, d: number, t: number) {
     const adjustedT = 1 - t;
     return (
       3 * d * Math.pow(t, 2) -
@@ -2760,6 +1092,7 @@ class BaseSketch {
     if (arguments.length === 1 && r instanceof Color) {
       return r;
     }
+    if (r instanceof Color) return null;
     if (this._style.colorMode === this.RGB) {
       if (arguments.length === 1) {
         return new Color(r, r, r, 1);
@@ -2772,16 +1105,16 @@ class BaseSketch {
       }
     } else {
       if (arguments.length == 1) {
-        const vals = Color.hsv2rgb(0, 0, r / 100, 1);
+        const vals = Color.hsv2rgb(0, 0, r / 100);
         return new Color(...vals);
       } else if (arguments.length === 2) {
-        const vals = Color.hsv2rgb(0, 0, r / 100, g / 255);
+        const vals = Color.hsv2rgb(0, 0, r / 100);
         return new Color(...vals);
       } else if (arguments.length === 3) {
-        const vals = Color.hsv2rgb(r, g / 100, b / 100, 1);
+        const vals = Color.hsv2rgb(r, g / 100, b / 100);
         return new Color(...vals);
       } else if (arguments.length === 4) {
-        const vals = Color.hsv2rgb(r, g / 100, b / 100, a);
+        const vals = Color.hsv2rgb(r, g / 100, b / 100);
         return new Color(...vals);
       }
     }
@@ -2828,2606 +1161,1313 @@ class BaseSketch {
       a._inferHSV();
       b._inferHSV();
       return new Color(
-        this.constrain(lerpHue(a._h, b._h, t), 0, 360),
+        this.constrain(this.lerpHue(a._h, b._h, t), 0, 360),
         this.constrain(this.lerp(a._s, b._s, t), 0, 100),
         this.constrain(this.lerp(a._v, b._v, t), 0, 100),
         this.constrain(this.lerp(a._a, b._a, t), 0, 1)
       );
     }
   }
-
-  hint(prop, val) {
-    this[prop] = val;
+  strokeWeight(n: number) {
+    this._style.noStroke = false;
+    this.ctx.lineWidth = n;
   }
-}
 
-class Q5 {
-  $: BaseSketch;
-  constructor() {
-    this.$ = new BaseSketch();
-    const ctx = this.$.canvas.getContext('2d');
-  }
-}
-
-function OldQ5(scope) {
-  return new graphics(scope);
-  function graphics(scope) {
-    let $ = scope == 'global' ? window : this;
-    $.canvas = document.createElement('canvas');
-    let ctx = $.canvas.getContext('2d');
-
-    $.width = 100;
-    $.height = 100;
-    $.canvas.width = $.width;
-    $.canvas.height = $.height;
-
-    if (scope != 'offscreen') {
-      if (document.body) {
-        document.body.appendChild($.canvas);
-      } else {
-        window.addEventListener('load', function () {
-          document.body.appendChild($.canvas);
-        });
-      }
+  stroke() {
+    this._style.noStroke = false;
+    if (typeof arguments[0] == 'string') {
+      this.ctx.strokeStyle = arguments[0];
+      return;
     }
+    const col = this.color(...arguments);
+    if (col._a <= 0) {
+      this._style.noStroke = true;
+      return;
+    }
+    this.ctx.strokeStyle = col;
+  }
 
-    defaultStyle();
+  noStroke() {
+    this._style.noStroke = true;
+  }
 
-    //================================================================
-    // CONSTANTS
-    //================================================================
-    $.MAGIC = 0x9a0ce55;
+  fill() {
+    this._style.noFill = false;
+    if (typeof arguments[0] == 'string') {
+      this.ctx.fillStyle = arguments[0];
+      return;
+    }
+    const col = this.color(...arguments);
+    if (col._a <= 0) {
+      this._style.noFill = true;
+      return;
+    }
+    this.ctx.fillStyle = col;
+  }
 
-    $.RGB = 0;
-    $.HSV = 1;
-    $.HSB = 1;
+  noFill() {
+    this._style.noFill = true;
+  }
 
-    $.CHORD = 0;
-    $.PIE = 1;
-    $.OPEN = 2;
+  blendMode(x: GlobalCompositeOperation) {
+    this.ctx.globalCompositeOperation = x;
+  }
 
-    $.RADIUS = 1;
-    $.CORNER = 2;
-    $.CORNERS = 3;
+  strokeCap(x: CanvasLineCap) {
+    this.ctx.lineCap = x;
+  }
 
-    $.ROUND = 'round';
-    $.SQUARE = 'butt';
-    $.PROJECT = 'square';
-    $.MITER = 'miter';
-    $.BEVEL = 'bevel';
+  strokeJoin(x: CanvasLineJoin) {
+    this.ctx.lineJoin = x;
+  }
 
-    $.CLOSE = 1;
+  ellipseMode(x: string) {
+    this._style.ellipseMode = x;
+  }
 
-    $.BLEND = 'source-over';
-    $.REMOVE = 'destination-out';
-    $.ADD = 'lighter';
-    $.DARKEST = 'darken';
-    $.LIGHTEST = 'lighten';
-    $.DIFFERENCE = 'difference';
-    $.SUBTRACT = 'subtract';
-    $.EXCLUSION = 'exclusion';
-    $.MULTIPLY = 'multiply';
-    $.SCREEN = 'screen';
-    $.REPLACE = 'copy';
-    $.OVERLAY = 'overlay';
-    $.HARD_LIGHT = 'hard-light';
-    $.SOFT_LIGHT = 'soft-light';
-    $.DODGE = 'color-dodge';
-    $.BURN = 'color-burn';
+  rectMode(x: number) {
+    this._style.rectMode = x;
+  }
+  curveDetail(x: number) {
+    this._style.curveDetail = x;
+  }
 
-    $.NORMAL = 'normal';
-    $.ITALIC = 'italic';
-    $.BOLD = 'bold';
-    $.BOLDITALIC = 'italic bold';
+  curveAlpha(x: number) {
+    this._style.curveAlpha = x;
+  }
 
-    $.CENTER = 'center';
-    $.LEFT = 'left';
-    $.RIGHT = 'right';
-    $.TOP = 'top';
-    $.BOTTOM = 'bottom';
-    $.BASELINE = 'alphabetic';
+  curveTightness(x: number) {
+    console.warn(
+      "curveTightness() sets the 'alpha' parameter of Catmull-Rom curve, and is NOT identical to p5.js counterpart. As this might change in the future, please call curveAlpha() directly."
+    );
+    this._style.curveAlpha = x;
+  }
 
-    $.LANDSCAPE = 'landscape';
-    $.PORTRAIT = 'portrait';
+  defaultStyle() {
+    this.ctx.fillStyle = 'white';
+    this.ctx.strokeStyle = 'black';
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'miter';
+  }
 
-    $.ALT = 18;
-    $.BACKSPACE = 8;
-    $.CONTROL = 17;
-    $.DELETE = 46;
-    $.DOWN_ARROW = 40;
-    $.ENTER = 13;
-    $.ESCAPE = 27;
-    $.LEFT_ARROW = 37;
-    $.OPTION = 18;
-    $.RETURN = 13;
-    $.RIGHT_ARROW = 39;
-    $.SHIFT = 16;
-    $.TAB = 9;
-    $.UP_ARROW = 38;
+  //================================================================
+  // DRAWING
+  //================================================================
 
-    $.HALF_PI = Math.PI / 2;
-    $.PI = Math.PI;
-    $.QUARTER_PI = Math.PI / 4;
-    $.TAU = Math.PI * 2;
-    $.TWO_PI = Math.PI * 2;
+  clear() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+  }
 
-    $.THRESHOLD = 1;
-    $.GRAY = 2;
-    $.OPAQUE = 3;
-    $.INVERT = 4;
-    $.POSTERIZE = 5;
-    $.DILATE = 6;
-    $.ERODE = 7;
-    $.BLUR = 8;
+  background() {
+    if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
+      return this.image(arguments[0], 0, 0, this.width, this.height);
+    }
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+    if (typeof arguments[0] == 'string') {
+      this.ctx.fillStyle = arguments[0];
+    } else {
+      this.ctx.fillStyle = this.color(...arguments);
+    }
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.restore();
+  }
 
-    $.ARROW = 'default';
-    $.CROSS = 'crosshair';
-    $.HAND = 'pointer';
-    $.MOVE = 'move';
-    $.TEXT = 'text';
+  line(x0: number, y0: number, x1: number, y1: number) {
+    if (!this._style.noStroke) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x0, y0);
+      this.ctx.lineTo(x1, y1);
+      this.ctx.stroke();
+    }
+  }
 
-    $.VIDEO = { video: true, audio: false };
-    $.AUDIO = { video: false, audio: true };
-
-    $.SHR3 = 1;
-    $.LCG = 2;
-
-    //================================================================
-    // HINTS
-    //================================================================
-
-    $.HARDWARE_FILTERS = true;
-    $.hint = function (prop, val) {
-      $[prop] = val;
-    };
-
-    //================================================================
-    // PUBLIC PROPERTIES
-    //================================================================
-    $.frameCount = 0;
-    $.mouseX = 0;
-    $.mouseY = 0;
-    $.pmouseX = 0;
-    $.pmouseY = 0;
-    $.mouseButton = null;
-    $.keyIsPressed = false;
-    $.mouseIsPressed = false;
-    $.key = null;
-    $.keyCode = null;
-    $.pixels = null;
-    $.accelerationX = 0;
-    $.accelerationY = 0;
-    $.accelerationZ = 0;
-    $.rotationX = 0;
-    $.rotationY = 0;
-    $.rotationZ = 0;
-    $.relRotationX = 0;
-    $.relRotationY = 0;
-    $.relRotationZ = 0;
-
-    $.pAccelerationX = 0;
-    $.pAccelerationY = 0;
-    $.pAccelerationZ = 0;
-    $.pRotationX = 0;
-    $.pRotationY = 0;
-    $.pRotationZ = 0;
-    $.pRelRotationX = 0;
-    $.pRelRotationY = 0;
-    $.pRelRotationZ = 0;
-
-    $.touches = [];
-
-    $._styleCache = [
-      {
-        colorMode: $.RGB,
-        noStroke: false,
-        noFill: false,
-        ellipseMode: $.CENTER,
-        rectMode: $.CORNER,
-        curveDetail: 20,
-        curveAlpha: 0.0,
-        textFont: 'sans-serif',
-        textSize: 12,
-        textLeading: 12,
-        textStyle: 'normal',
-      },
+  lerpHue(h0: number, h1: number, t: number) {
+    var methods = [
+      [Math.abs(h1 - h0), this.map(t, 0, 1, h0, h1)],
+      [Math.abs(h1 + 360 - h0), this.map(t, 0, 1, h0, h1 + 360)],
+      [Math.abs(h1 - 360 - h0), this.map(t, 0, 1, h0, h1 - 360)],
     ];
-    $._style = $._styleCache[$._styleCache.length - 1];
+    methods.sort((x, y) => x[0] - y[0]);
+    return (methods[0][1] + 720) % 360;
+  }
 
-    $._noLoop = false;
-
-    $._pixelDensity = 1;
-
-    $._frameRate = null;
-
-    $._tint = null;
-
-    //================================================================
-    // PRIVATE VARS
-    //================================================================
-    let looper = null;
-    let firstVertex = true;
-    let curveBuff = [];
-    let imgData = null;
-    let preloadCnt = 0;
-    let keysHeld = {};
-    let millisStart = 0;
-    let tmpCtx = null;
-    let tmpCt2 = null;
-    let tmpBuf = null;
-
-    //================================================================
-    // ALIAS PROPERTIES
-    //================================================================
-
-    Object.defineProperty($, 'deviceOrientation', {
-      get: function () {
-        return Math.abs(window.orientation) == 90 ? $.LANDSCAPE : $.PORTRAIT;
-      },
-    });
-
-    Object.defineProperty($, 'windowWidth', {
-      get: function () {
-        return window.innerWidth;
-      },
-    });
-
-    Object.defineProperty($, 'windowHeight', {
-      get: function () {
-        return window.innerHeight;
-      },
-    });
-
-    Object.defineProperty($, 'drawingContext', {
-      get: function () {
-        return ctx;
-      },
-    });
-
-    //================================================================
-    // CANVAS
-    //================================================================
-
-    $.createCanvas = function (width, height) {
-      $.width = width;
-      $.height = height;
-      $.canvas.width = width;
-      $.canvas.height = height;
-      defaultStyle();
-      return $.canvas;
-    };
-
-    $.resizeCanvas = function (width, height) {
-      $.width = width;
-      $.height = height;
-      $.canvas.width = width;
-      $.canvas.height = height;
-    };
-
-    $.createGraphics = $.createImage = function (width, height) {
-      let g = new graphics('offscreen');
-      g.createCanvas(width, height);
-      g.noLoop();
-      return g;
-    };
-
-    $.pixelDensity = function (n) {
-      if (n == undefined) {
-        return $._pixelDensity;
-      }
-      $._pixelDensity = n;
-
-      $.canvas.width = Math.ceil($.width * n);
-      $.canvas.height = Math.ceil($.height * n);
-      $.canvas.style.width = $.width + 'px';
-      $.canvas.style.height = $.height + 'px';
-
-      ctx.scale($._pixelDensity, $._pixelDensity);
-      defaultStyle();
-      return $._pixelDensity;
-    };
-
-    //================================================================
-    // MATH
-    //================================================================
-
-    $.map = function (value, istart, istop, ostart, ostop, clamp) {
-      let val = ostart + (ostop - ostart) * (((value - istart) * 1.0) / (istop - istart));
-      if (!clamp) {
-        return val;
-      }
-      if (ostart < ostop) {
-        return Math.min(Math.max(val, ostart), ostop);
-      } else {
-        return Math.min(Math.max(val, ostop), ostart);
-      }
-    };
-    $.lerp = function (a, b, t) {
-      return a * (1 - t) + b * t;
-    };
-    $.constrain = function (x, lo, hi) {
-      return Math.min(Math.max(x, lo), hi);
-    };
-    $.dist = function () {
-      if (arguments.length == 4) {
-        return Math.hypot(arguments[0] - arguments[2], arguments[1] - arguments[3]);
-      } else {
-        return Math.hypot(
-          arguments[0] - arguments[3],
-          arguments[1] - arguments[4],
-          arguments[2] - arguments[5]
-        );
-      }
-    };
-    $.norm = function (value, start, stop) {
-      return $.map(value, start, stop, 0, 1);
-    };
-    $.sq = function (x) {
-      return x * x;
-    };
-    $.fract = function (x) {
-      return x - Math.floor(x);
-    };
-    $.degrees = function (x) {
-      return (x * 180) / Math.PI;
-    };
-    $.radians = function (x) {
-      return (x * Math.PI) / 180;
-    };
-    $.abs = Math.abs;
-    $.ceil = Math.ceil;
-    $.exp = Math.exp;
-    $.floor = Math.floor;
-    $.log = Math.log;
-    $.mag = Math.hypot;
-    $.max = Math.max;
-    $.min = Math.min;
-    $.round = Math.round;
-    $.sqrt = Math.sqrt;
-    $.sin = Math.sin;
-    $.cos = Math.cos;
-    $.tan = Math.tan;
-    $.asin = Math.asin;
-    $.acos = Math.acos;
-    $.atan = Math.atan;
-    $.atan2 = Math.atan2;
-
-    //================================================================
-    // VECTOR
-    //================================================================
-    $.Vector = function (_x, _y, _z) {
-      let v = this;
-      v.x = _x || 0;
-      v.y = _y || 0;
-      v.z = _z || 0;
-      let cacheNorm = null;
-      let cacheNormSq = null;
-      v.set = function (_x, _y, _z) {
-        v.x = _x || 0;
-        v.y = _y || 0;
-        v.z = _z || 0;
-      };
-      v.copy = function () {
-        return new $.Vector(v.x, v.y, v.z);
-      };
-      function arg2v(x, y, z) {
-        if (x.x != undefined) {
-          return x;
-        }
-        if (y != undefined) {
-          return { x, y, z: z || 0 };
-        }
-        return { x: x, y: x, z: x };
-      }
-      function calcNorm() {
-        if (cacheNormSq == null) {
-          cacheNormSq = v.x * v.x + v.y * v.y + v.z * v.z;
-          cacheNorm = Math.sqrt(cacheNormSq);
-        }
-      }
-      function deprecNorm() {
-        cacheNormSq = null;
-        cacheNorm = null;
-      }
-      v.add = function () {
-        let u = arg2v.apply(null, arguments);
-        v.x += u.x;
-        v.y += u.y;
-        v.z += u.z;
-        deprecNorm();
-        return v;
-      };
-      v.rem = function () {
-        let u = arg2v.apply(null, arguments);
-        v.x %= u.x;
-        v.y %= u.y;
-        v.z %= u.z;
-        deprecNorm();
-        return v;
-      };
-      v.sub = function () {
-        let u = arg2v.apply(null, arguments);
-        v.x -= u.x;
-        v.y -= u.y;
-        v.z -= u.z;
-        deprecNorm();
-        return v;
-      };
-      v.mult = function () {
-        let u = arg2v.apply(null, arguments);
-        v.x *= u.x;
-        v.y *= u.y;
-        v.z *= u.z;
-        deprecNorm();
-        return v;
-      };
-      v.div = function () {
-        let u = arg2v.apply(null, arguments);
-        v.x /= u.x;
-        v.y /= u.y;
-        v.z /= u.z;
-        deprecNorm();
-        return v;
-      };
-      v.mag = function () {
-        calcNorm();
-        return cacheNorm;
-      };
-      v.magSq = function () {
-        calcNorm();
-        return cacheNormSq;
-      };
-      v.dot = function () {
-        let u = arg2v.apply(null, arguments);
-        return v.x * u.x + v.y * u.y + v.z * u.z;
-      };
-      v.dist = function () {
-        let u = arg2v.apply(null, arguments);
-        let x = v.x - u.x;
-        let y = v.y - u.y;
-        let z = v.z - u.z;
-        return Math.sqrt(x * x + y * y + z * z);
-      };
-      v.cross = function () {
-        let u = arg2v.apply(null, arguments);
-        let x = v.y * u.z - v.z * u.y;
-        let y = v.z * u.x - v.x * u.z;
-        let z = v.x * u.y - v.y * u.x;
-        v.x = x;
-        v.y = y;
-        v.z = z;
-        deprecNorm();
-        return v;
-      };
-      v.normalize = function () {
-        calcNorm();
-        let n = cacheNorm;
-        v.x /= n;
-        v.y /= n;
-        v.z /= n;
-        cacheNorm = 1;
-        cacheNormSq = 1;
-        return v;
-      };
-      v.limit = function (m) {
-        calcNorm();
-        let n = cacheNorm;
-        if (n > m) {
-          let t = m / n;
-          v.x *= t;
-          v.y *= t;
-          v.z *= t;
-          cacheNorm = m;
-          cacheNormSq = m * m;
-        }
-        return v;
-      };
-      v.setMag = function (m) {
-        calcNorm();
-        let n = cacheNorm;
-        let t = m / n;
-        v.x *= t;
-        v.y *= t;
-        v.z *= t;
-        cacheNorm = m;
-        cacheNormSq = m * m;
-        return v;
-      };
-      v.heading = function () {
-        return Math.atan2(v.y, v.x);
-      };
-      v.rotate = function (ang) {
-        let costh = Math.cos(ang);
-        let sinth = Math.sin(ang);
-        let vx = v.x * costh - v.y * sinth;
-        let vy = v.x * sinth + v.y * costh;
-        v.x = vx;
-        v.y = vy;
-        return v;
-      };
-      v.angleBetween = function () {
-        let u = arg2v.apply(null, arguments);
-        const costh = v.dot(u) / (v.mag() * u.mag());
-        let ang;
-        ang = Math.acos(Math.min(1, Math.max(-1, costh)));
-        ang = ang * Math.sign(v.cross(u).z || 1);
-        return ang;
-      };
-      v.lerp = function (u, t) {
-        v.x = v.x * (1 - t) + u.x * t;
-        v.y = v.y * (1 - t) + u.y * t;
-        v.z = v.z * (1 - t) + u.z * t;
-        deprecNorm();
-        return v;
-      };
-      v.reflect = function (n) {
-        n.normalize();
-        return v.sub(n.mult(2 * v.dot(n)));
-      };
-      v.array = function () {
-        return [v.x, v.y, v.z];
-      };
-      v.equals = function (u, epsilon) {
-        if (epsilon == undefined) {
-          epsilon = Number.EPSILON;
-          if (epsilon == undefined) {
-            epsilon = 0;
-          }
-        }
-        return (
-          Math.abs(u.x - v.x) < epsilon &&
-          Math.abs(u.y - v.y) < epsilon &&
-          Math.abs(u.z - v.z) < epsilon
-        );
-      };
-      v.fromAngle = function (th, l) {
-        if (l == undefined) {
-          l = 1;
-        }
-        cacheNorm = l;
-        cacheNormSq = l * l;
-        v.x = l * Math.cos(th);
-        v.y = l * Math.sin(th);
-        v.z = 0;
-        return v;
-      };
-      v.fromAngles = function (th, ph, l) {
-        if (l == undefined) {
-          l = 1;
-        }
-        cacheNorm = l;
-        cacheNormSq = l * l;
-        const cosph = Math.cos(ph);
-        const sinph = Math.sin(ph);
-        const costh = Math.cos(th);
-        const sinth = Math.sin(th);
-        v.x = l * sinth * sinph;
-        v.y = -l * costh;
-        v.z = l * sinth * cosph;
-        return v;
-      };
-      v.random2D = function () {
-        cacheNorm = 1;
-        cacheNormSq = 1;
-        return v.fromAngle(Math.random() * Math.PI * 2);
-      };
-      v.random3D = function () {
-        cacheNorm = 1;
-        cacheNormSq = 1;
-        return v.fromAngles(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-      };
-      v.toString = function () {
-        return `[${v.x}, ${v.y}, ${v.z}]`;
-      };
-    };
-    $.Vector.add = function (v, u) {
-      return new $.Vector(v.x + u.x, v.y + u.y, v.z + u.z);
-    };
-    $.Vector.rem = function (v, u) {
-      return new $.Vector(v.x % u.x, v.y % u.y, v.z % u.z);
-    };
-    $.Vector.sub = function (v, u) {
-      return new $.Vector(v.x - u.x, v.y - u.y, v.z - u.z);
-    };
-    $.Vector.mult = function (v, u) {
-      if (u.x == undefined) {
-        return new $.Vector(v.x * u, v.y * u, v.z * u);
-      }
-      return new $.Vector(v.x * u.x, v.y * u.y, v.z * u.z);
-    };
-    $.Vector.div = function (v, u) {
-      if (u.x == undefined) {
-        return new $.Vector(v.x / u, v.y / u, v.z / u);
-      }
-      return new $.Vector(v.x / u.x, v.y / u.y, v.z / u.z);
-    };
-    $.Vector.dist = function (v, u) {
-      return Math.hypot(v.x - u.x, v.y - u.y, v.z - u.z);
-    };
-    $.Vector.cross = function (v, u) {
-      return new $.Vector(
-        v.y * u.z - v.z * u.y,
-        v.z * u.x - v.x * u.z,
-        v.x * u.y - v.y * u.x
-      );
-    };
-    $.Vector.lerp = function (v, u, t) {
-      return new $.Vector(
-        v.x * (1 - t) + u.x * t,
-        (v.y = v.y * (1 - t) + u.y * t),
-        (v.z = v.z * (1 - t) + u.z * t)
-      );
-    };
-    $.Vector.equals = function (v, u, epsilon) {
-      return v.equals(u, epsilon);
-    };
-
-    for (let k of ['fromAngle', 'fromAngles', 'random2D', 'random3D']) {
-      $.Vector[k] = function (u, v, t) {
-        return new $.Vector()[k](u, v, t);
-      };
-    }
-    $.createVector = function (x, y, z) {
-      return new $.Vector(x, y, z);
-    };
-
-    //================================================================
-    // CURVE QUERY
-    //================================================================
-    //https://github.com/processing/p5.js/blob/1.1.9/src/core/shape/curves.js
-
-    $.curvePoint = function (a, b, c, d, t) {
-      const t3 = t * t * t,
-        t2 = t * t,
-        f1 = -0.5 * t3 + t2 - 0.5 * t,
-        f2 = 1.5 * t3 - 2.5 * t2 + 1.0,
-        f3 = -1.5 * t3 + 2.0 * t2 + 0.5 * t,
-        f4 = 0.5 * t3 - 0.5 * t2;
-      return a * f1 + b * f2 + c * f3 + d * f4;
-    };
-    $.bezierPoint = function (a, b, c, d, t) {
-      const adjustedT = 1 - t;
-      return (
-        Math.pow(adjustedT, 3) * a +
-        3 * Math.pow(adjustedT, 2) * t * b +
-        3 * adjustedT * Math.pow(t, 2) * c +
-        Math.pow(t, 3) * d
-      );
-    };
-    $.curveTangent = function (a, b, c, d, t) {
-      const t2 = t * t,
-        f1 = (-3 * t2) / 2 + 2 * t - 0.5,
-        f2 = (9 * t2) / 2 - 5 * t,
-        f3 = (-9 * t2) / 2 + 4 * t + 0.5,
-        f4 = (3 * t2) / 2 - t;
-      return a * f1 + b * f2 + c * f3 + d * f4;
-    };
-    $.bezierTangent = function (a, b, c, d, t) {
-      const adjustedT = 1 - t;
-      return (
-        3 * d * Math.pow(t, 2) -
-        3 * c * Math.pow(t, 2) +
-        6 * c * adjustedT * t -
-        6 * b * adjustedT * t +
-        3 * b * Math.pow(adjustedT, 2) -
-        3 * a * Math.pow(adjustedT, 2)
-      );
-    };
-
-    //================================================================
-    // COLORS
-    //================================================================
-
-    function hsv2rgb(h, s, v) {
-      //https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-      let r, g, b;
-      let hh, i, ff, p, q, t;
-      if (s == 0) {
-        r = v;
-        g = v;
-        b = v;
-        return [r * 255, g * 255, b * 255];
-      }
-      hh = h;
-      if (hh > 360) hh = 0;
-      hh /= 60;
-      i = ~~hh;
-      ff = hh - i;
-      p = v * (1.0 - s);
-      q = v * (1.0 - s * ff);
-      t = v * (1.0 - s * (1.0 - ff));
-      switch (i) {
-        case 0:
-          r = v;
-          g = t;
-          b = p;
-          break;
-        case 1:
-          r = q;
-          g = v;
-          b = p;
-          break;
-        case 2:
-          r = p;
-          g = v;
-          b = t;
-          break;
-        case 3:
-          r = p;
-          g = q;
-          b = v;
-          break;
-        case 4:
-          r = t;
-          g = p;
-          b = v;
-          break;
-        default:
-          r = v;
-          g = p;
-          b = q;
-          break;
-      }
-      return [r * 255, g * 255, b * 255];
-    }
-
-    function rgb2hsv(r, g, b) {
-      //https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-      let rgbMin, rgbMax;
-      let h, s, v;
-      rgbMin = r < g ? (r < b ? r : b) : g < b ? g : b;
-      rgbMax = r > g ? (r > b ? r : b) : g > b ? g : b;
-      v = (rgbMax * 100) / 255;
-      if (v == 0) {
-        h = 0;
-        s = 0;
-        return [h, s, v];
-      }
-      s = (100 * (rgbMax - rgbMin)) / rgbMax;
-      if (s == 0) {
-        h = 0;
-        return [h, s, v];
-      }
-      if (rgbMax == r) h = 0 + (60 * (g - b)) / (rgbMax - rgbMin);
-      else if (rgbMax == g) h = 120 + (60 * (b - r)) / (rgbMax - rgbMin);
-      else h = 240 + (60 * (r - g)) / (rgbMax - rgbMin);
-      return [h, s, v];
-    }
-
-    $.Color = function (r, g, b, a) {
-      let that = this;
-      that.MAGIC = 0xc010a;
-      that._r = r;
-      that._g = g;
-      that._b = b;
-      that._a = a;
-      that._h = 0;
-      that._s = 0;
-      that._v = 0;
-      that._hsvInferred = false;
-      that.setRed = function (x) {
-        that._r = x;
-        that._hsvInferred = false;
-      };
-      that.setGreen = function (x) {
-        that._g = x;
-        that._hsvInferred = false;
-      };
-      that.setBlue = function (x) {
-        that._b = x;
-        that._hsvInferred = false;
-      };
-      that.setAlpha = function (x) {
-        that._a = x / 255;
-        that._hsvInferred = false;
-      };
-      that._inferHSV = function () {
-        if (!that._hsvInferred) {
-          [that._h, that._s, that._v] = rgb2hsv(that._r, that._g, that._b);
-          that._hsvInferred = true;
-        }
-      };
-      that.toString = function () {
-        return `rgba(${Math.round(that._r)},${Math.round(that._g)},${Math.round(
-          that._b
-        )},${~~(that._a * 1000) / 1000})`;
-      };
-    };
-
-    $.colorMode = function (mode) {
-      $._style.colorMode = mode;
-    };
-
-    $.color = function () {
-      if (arguments.length == 1 && arguments[0].MAGIC == 0xc010a) {
-        return arguments[0];
-      }
-      if ($._style.colorMode == $.RGB) {
-        if (arguments.length == 1) {
-          return new $.Color(arguments[0], arguments[0], arguments[0], 1);
-        } else if (arguments.length == 2) {
-          return new $.Color(
-            arguments[0],
-            arguments[0],
-            arguments[0],
-            arguments[1] / 255
-          );
-        } else if (arguments.length == 3) {
-          return new $.Color(arguments[0], arguments[1], arguments[2], 1);
-        } else if (arguments.length == 4) {
-          return new $.Color(
-            arguments[0],
-            arguments[1],
-            arguments[2],
-            arguments[3] / 255
-          );
-        }
-      } else {
-        if (arguments.length == 1) {
-          return new $.Color(...hsv2rgb(0, 0, arguments[0] / 100), 1);
-        } else if (arguments.length == 2) {
-          return new $.Color(...hsv2rgb(0, 0, arguments[0] / 100), arguments[1] / 255);
-        } else if (arguments.length == 3) {
-          return new $.Color(
-            ...hsv2rgb(arguments[0], arguments[1] / 100, arguments[2] / 100),
-            1
-          );
-        } else if (arguments.length == 4) {
-          return new $.Color(
-            ...hsv2rgb(arguments[0], arguments[1] / 100, arguments[2] / 100),
-            arguments[3]
-          );
-        }
-      }
-      return null;
-    };
-
-    $.red = function (c) {
-      return c._r;
-    };
-    $.green = function (c) {
-      return c._g;
-    };
-    $.blue = function (c) {
-      return c._b;
-    };
-    $.alpha = function (c) {
-      return c._a * 255;
-    };
-    $.hue = function (c) {
-      c._inferHSV();
-      return c._h;
-    };
-    $.saturation = function (c) {
-      c._inferHSV();
-      return c._s;
-    };
-    $.brightness = function (c) {
-      c._inferHSV();
-      return c._v;
-    };
-    $.lightness = function (c) {
-      return ((0.2126 * c._r + 0.7152 * c._g + 0.0722 * c._b) * 100) / 255;
-    };
-
-    function lerpHue(h0, h1, t) {
-      var methods = [
-        [Math.abs(h1 - h0), $.map(t, 0, 1, h0, h1)],
-        [Math.abs(h1 + 360 - h0), $.map(t, 0, 1, h0, h1 + 360)],
-        [Math.abs(h1 - 360 - h0), $.map(t, 0, 1, h0, h1 - 360)],
-      ];
-      methods.sort((x, y) => x[0] - y[0]);
-      return (methods[0][1] + 720) % 360;
-    }
-
-    $.lerpColor = function (a, b, t) {
-      if ($._style.colorMode == $.RGB) {
-        return new $.Color(
-          $.constrain($.lerp(a._r, b._r, t), 0, 255),
-          $.constrain($.lerp(a._g, b._g, t), 0, 255),
-          $.constrain($.lerp(a._b, b._b, t), 0, 255),
-          $.constrain($.lerp(a._a, b._a, t), 0, 1)
-        );
-      } else {
-        a._inferHSV();
-        b._inferHSV();
-        return new $.Color(
-          $.constrain(lerpHue(a._h, b._h, t), 0, 360),
-          $.constrain($.lerp(a._s, b._s, t), 0, 100),
-          $.constrain($.lerp(a._v, b._v, t), 0, 100),
-          $.constrain($.lerp(a._a, b._a, t), 0, 1)
-        );
-      }
-    };
-
-    //================================================================
-    // DRAWING SETTING
-    //================================================================
-
-    function defaultStyle() {
-      ctx.fillStyle = 'white';
-      ctx.strokeStyle = 'black';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'miter';
-    }
-
-    $.strokeWeight = function (n) {
-      $._style_noStroke = false;
-      ctx.lineWidth = n;
-    };
-    $.stroke = function () {
-      $._style.noStroke = false;
-      if (typeof arguments[0] == 'string') {
-        ctx.strokeStyle = arguments[0];
-        return;
-      }
-      let col = $.color.apply(null, arguments);
-      if (col._a <= 0) {
-        $._style.noStroke = true;
-        return;
-      }
-      ctx.strokeStyle = col;
-    };
-    $.noStroke = function () {
-      $._style.noStroke = true;
-    };
-    $.fill = function () {
-      $._style.noFill = false;
-      if (typeof arguments[0] == 'string') {
-        ctx.fillStyle = arguments[0];
-        return;
-      }
-      let col = $.color.apply(null, arguments);
-      if (col._a <= 0) {
-        $._style.noFill = true;
-        return;
-      }
-      ctx.fillStyle = col;
-    };
-    $.noFill = function () {
-      $._style.noFill = true;
-    };
-    $.blendMode = function (x) {
-      ctx.globalCompositeOperation = x;
-    };
-    $.strokeCap = function (x) {
-      ctx.lineCap = x;
-    };
-    $.strokeJoin = function (x) {
-      ctx.lineJoin = x;
-    };
-    $.ellipseMode = function (x) {
-      $._style.ellipseMode = x;
-    };
-    $.rectMode = function (x) {
-      $._style.rectMode = x;
-    };
-    $.curveDetail = function (x) {
-      $._style.curveDetail = x;
-    };
-    $.curveAlpha = function (x) {
-      $._style.curveAlpha = x;
-    };
-    $.curveTightness = function (x) {
-      console.warn(
-        "curveTightness() sets the 'alpha' parameter of Catmull-Rom curve, and is NOT identical to p5.js counterpart. As this might change in the future, please call curveAlpha() directly."
-      );
-      $._style.curveAlpha = x;
-    };
-
-    //================================================================
-    // DRAWING
-    //================================================================
-
-    $.clear = function () {
-      ctx.clearRect(0, 0, $.width, $.height);
-    };
-
-    $.background = function () {
-      if (arguments[0] && arguments[0].MAGIC == $.MAGIC) {
-        return $.image(arguments[0], 0, 0, $.width, $.height);
-      }
-      ctx.save();
-      ctx.resetTransform();
-      ctx.scale($._pixelDensity, $._pixelDensity);
-      if (typeof arguments[0] == 'string') {
-        ctx.fillStyle = arguments[0];
-      } else {
-        ctx.fillStyle = $.color(...Array.from(arguments));
-      }
-      ctx.fillRect(0, 0, $.width, $.height);
-      ctx.restore();
-    };
-
-    $.line = function (x0, y0, x1, y1) {
-      if (!$._style.noStroke) {
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-      }
-    };
-
-    function norm2PI(x) {
-      if (0 <= x && x < Math.PI * 2) {
-        return x;
-      }
-      while (x < 0) {
-        x += Math.PI * 2;
-      }
-      while (x >= Math.PI) {
-        x -= Math.PI * 2;
-      }
+  static norm2PI(x: number): number {
+    if (0 <= x && x < Math.PI * 2) {
       return x;
     }
-
-    function arcImpl(x, y, w, h, start, stop, mode, detail) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      let lo = norm2PI(start);
-      let hi = norm2PI(stop);
-      ctx.beginPath();
-      for (let i = 0; i < detail + 1; i++) {
-        let t = i / detail;
-        let a = $.lerp(lo, hi, t);
-        let dx = (Math.cos(a) * w) / 2;
-        let dy = (Math.sin(a) * h) / 2;
-        ctx[i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
-      }
-      if (mode == $.CHORD) {
-        ctx.closePath();
-      } else if (mode == $.PIE) {
-        ctx.lineTo(x, y);
-        ctx.closePath();
-      }
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
+    while (x < 0) {
+      x += Math.PI * 2;
     }
-    $.arc = function (x, y, w, h, start, stop, mode, detail) {
-      if (start == stop) {
-        return $.ellipse(x, y, w, h);
-      }
-      if (detail == undefined) {
-        detail = 25;
-      }
-      if (mode == undefined) {
-        mode = $.PIE;
-      }
-      if ($._style.ellipseMode == $.CENTER) {
-        arcImpl(x, y, w, h, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.RADIUS) {
-        arcImpl(x, y, w * 2, h * 2, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.CORNER) {
-        arcImpl(x + w / 2, y + h / 2, w, h, start, stop, mode, detail);
-      } else if ($._style.ellipseMode == $.CORNERS) {
-        arcImpl((x + w) / 2, (y + h) / 2, w - x, h - y, start, stop, mode, detail);
-      }
-    };
-
-    function ellipseImpl(x, y, w, h) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      ctx.beginPath();
-      ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
+    while (x >= Math.PI) {
+      x -= Math.PI * 2;
     }
-    $.ellipse = function (x, y, w, h) {
-      if (h == undefined) {
-        h = w;
-      }
-      if ($._style.ellipseMode == $.CENTER) {
-        ellipseImpl(x, y, w, h);
-      } else if ($._style.ellipseMode == $.RADIUS) {
-        ellipseImpl(x, y, w * 2, h * 2);
-      } else if ($._style.ellipseMode == $.CORNER) {
-        ellipseImpl(x + w / 2, y + h / 2, w, h);
-      } else if ($._style.ellipseMode == $.CORNERS) {
-        ellipseImpl((x + w) / 2, (y + h) / 2, w - x, h - y);
-      }
-    };
-    $.circle = function (x, y, r) {
-      return $.ellipse(x, y, r, r);
-    };
-    $.point = function (x, y) {
-      if (x.x) {
-        y = x.y;
-        x = x.x;
-      }
-      ctx.beginPath();
-      ctx.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    };
-    function rectImpl(x, y, w, h) {
-      if (!$._style.noFill) {
-        ctx.fillRect(x, y, w, h);
-      }
-      if (!$._style.noStroke) {
-        ctx.strokeRect(x, y, w, h);
-      }
+    return x;
+  }
+
+  arcImpl(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    start: number,
+    stop: number,
+    mode: number,
+    detail: number
+  ) {
+    if (this._style.noFill && this._style.noStroke) {
+      return;
     }
-    function roundedRectImpl(x, y, w, h, tl, tr, br, bl) {
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      if (tl == undefined) {
-        return rectImpl(x, y, w, h);
-      }
-      if (tr == undefined) {
-        return roundedRectImpl(x, y, w, h, tl, tl, tl, tl);
-      }
-      const hh = Math.min(Math.abs(h), Math.abs(w)) / 2;
-      tl = Math.min(hh, tl);
-      tr = Math.min(hh, tr);
-      bl = Math.min(hh, bl);
-      br = Math.min(hh, br);
-      ctx.beginPath();
-      ctx.moveTo(x + tl, y);
-      ctx.arcTo(x + w, y, x + w, y + h, tr);
-      ctx.arcTo(x + w, y + h, x, y + h, br);
-      ctx.arcTo(x, y + h, x, y, bl);
-      ctx.arcTo(x, y, x + w, y, tl);
-      ctx.closePath();
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
+    let lo = Q5.norm2PI(start);
+    let hi = Q5.norm2PI(stop);
+    this.ctx.beginPath();
+    for (let i = 0; i < detail + 1; i++) {
+      let t = i / detail;
+      let a = this.lerp(lo, hi, t);
+      let dx = (Math.cos(a) * w) / 2;
+      let dy = (Math.sin(a) * h) / 2;
+      this.ctx[i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
     }
-
-    $.rect = function (x, y, w, h, tl, tr, br, bl) {
-      if ($._style.rectMode == $.CENTER) {
-        roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.RADIUS) {
-        roundedRectImpl(x - w, y - h, w * 2, h * 2, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.CORNER) {
-        roundedRectImpl(x, y, w, h, tl, tr, br, bl);
-      } else if ($._style.rectMode == $.CORNERS) {
-        roundedRectImpl(x, y, w - x, h - y, tl, tr, br, bl);
-      }
-    };
-    $.square = function (x, y, s, tl, tr, br, bl) {
-      return $.rect(x, y, s, s, tl, tr, br, bl);
-    };
-
-    function clearBuff() {
-      curveBuff = [];
+    if (mode == this.CHORD) {
+      this.ctx.closePath();
+    } else if (mode == this.PIE) {
+      this.ctx.lineTo(x, y);
+      this.ctx.closePath();
     }
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
+  }
 
-    $.beginShape = function () {
-      clearBuff();
-      ctx.beginPath();
-      firstVertex = true;
-    };
-    $.beginContour = function () {
-      ctx.closePath();
-      clearBuff();
-      firstVertex = true;
-    };
-    $.endContour = function () {
-      clearBuff();
-      firstVertex = true;
-    };
-    $.vertex = function (x, y) {
-      clearBuff();
-      if (firstVertex) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-      firstVertex = false;
-    };
-    $.bezierVertex = function (cp1x, cp1y, cp2x, cp2y, x, y) {
-      clearBuff();
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
-    };
-    $.quadraticVertex = function (cp1x, cp1y, x, y) {
-      clearBuff();
-      ctx.quadraticCurveTo(cp1x, cp1y, x, y);
-    };
-    $.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.bezierVertex(x2, y2, x3, y3, x4, y4);
-      $.endShape();
-    };
-    $.triangle = function (x1, y1, x2, y2, x3, y3) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.vertex(x2, y2);
-      $.vertex(x3, y3);
-      $.endShape($.CLOSE);
-    };
-    $.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.vertex(x1, y1);
-      $.vertex(x2, y2);
-      $.vertex(x3, y3);
-      $.vertex(x4, y4);
-      $.endShape($.CLOSE);
-    };
-    $.endShape = function (close) {
-      clearBuff();
-      if (close) {
-        ctx.closePath();
-      }
-      if (!$._style.noFill) ctx.fill();
-      if (!$._style.noStroke) ctx.stroke();
-      if ($._style.noFill && $._style.noStroke) {
-        // eh.
-        ctx.save();
-        ctx.fillStyle = 'none';
-        ctx.fill();
-        ctx.restore();
-      }
-    };
-    function catmullRomSpline(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, numPts, alpha) {
-      //https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline
-      function catmullromSplineGetT(t, p0x, p0y, p1x, p1y, alpha) {
-        let a = Math.pow(p1x - p0x, 2.0) + Math.pow(p1y - p0y, 2.0);
-        let b = Math.pow(a, alpha * 0.5);
-        return b + t;
-      }
-      let pts = [];
+  arc(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    start: number,
+    stop: number,
+    mode: number,
+    detail: number
+  ) {
+    if (start == stop) {
+      return this.ellipse(x, y, w, h);
+    }
+    if (detail == undefined) {
+      detail = 25;
+    }
+    if (mode == undefined) {
+      mode = this.PIE;
+    }
+    if (this._style.ellipseMode == this.CENTER) {
+      this.arcImpl(x, y, w, h, start, stop, mode, detail);
+    } else if (this._style.ellipseMode == this.RADIUS) {
+      this.arcImpl(x, y, w * 2, h * 2, start, stop, mode, detail);
+    } else if (this._style.ellipseMode == this.CORNER) {
+      this.arcImpl(x + w / 2, y + h / 2, w, h, start, stop, mode, detail);
+    } else if (this._style.ellipseMode == this.CORNERS) {
+      this.arcImpl((x + w) / 2, (y + h) / 2, w - x, h - y, start, stop, mode, detail);
+    }
+  }
 
-      let t0 = 0.0;
-      let t1 = catmullromSplineGetT(t0, p0x, p0y, p1x, p1y, alpha);
-      let t2 = catmullromSplineGetT(t1, p1x, p1y, p2x, p2y, alpha);
-      let t3 = catmullromSplineGetT(t2, p2x, p2y, p3x, p3y, alpha);
+  ellipseImpl(x, y, w, h) {
+    if (this._style.noFill && this._style.noStroke) {
+      return;
+    }
+    this.ctx.beginPath();
+    this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
+  }
 
-      for (let i = 0; i < numPts; i++) {
-        let t = t1 + (i / (numPts - 1)) * (t2 - t1);
-        let s = [
-          (t1 - t) / (t1 - t0),
-          (t - t0) / (t1 - t0),
-          (t2 - t) / (t2 - t1),
-          (t - t1) / (t2 - t1),
-          (t3 - t) / (t3 - t2),
-          (t - t2) / (t3 - t2),
-          (t2 - t) / (t2 - t0),
-          (t - t0) / (t2 - t0),
-          (t3 - t) / (t3 - t1),
-          (t - t1) / (t3 - t1),
-        ];
-        for (let j = 0; j < s.length; j += 2) {
-          if (isNaN(s[j])) {
+  ellipse(x, y, w, h) {
+    if (h == undefined) {
+      h = w;
+    }
+    if (this._style.ellipseMode == this.CENTER) {
+      this.ellipseImpl(x, y, w, h);
+    } else if (this._style.ellipseMode == this.RADIUS) {
+      this.ellipseImpl(x, y, w * 2, h * 2);
+    } else if (this._style.ellipseMode == this.CORNER) {
+      this.ellipseImpl(x + w / 2, y + h / 2, w, h);
+    } else if (this._style.ellipseMode == this.CORNERS) {
+      this.ellipseImpl((x + w) / 2, (y + h) / 2, w - x, h - y);
+    }
+  }
+
+  circle(x: number, y: number, r: number) {
+    return this.ellipse(x, y, r, r);
+  }
+
+  point(x: Vector | number, y?: number) {
+    if (x instanceof Vector) {
+      y = x.y;
+      x = x.x;
+    }
+    if (!y) return;
+    this.ctx.beginPath();
+    this.ctx.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
+    this.ctx.stroke();
+  }
+
+  rectImpl(x: number, y: number, w: number, h: number): void {
+    if (!this._style.noFill) {
+      this.ctx.fillRect(x, y, w, h);
+    }
+    if (!this._style.noStroke) {
+      this.ctx.strokeRect(x, y, w, h);
+    }
+  }
+
+  roundedRectImpl(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    tl: number,
+    tr: number,
+    br: number,
+    bl: number
+  ): number | void {
+    if (this._style.noFill && this._style.noStroke) {
+      return;
+    }
+    if (tl == undefined) {
+      return this.rectImpl(x, y, w, h);
+    }
+    if (tr == undefined) {
+      return this.roundedRectImpl(x, y, w, h, tl, tl, tl, tl);
+    }
+    const hh = Math.min(Math.abs(h), Math.abs(w)) / 2;
+    tl = Math.min(hh, tl);
+    tr = Math.min(hh, tr);
+    bl = Math.min(hh, bl);
+    br = Math.min(hh, br);
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + tl, y);
+    this.ctx.arcTo(x + w, y, x + w, y + h, tr);
+    this.ctx.arcTo(x + w, y + h, x, y + h, br);
+    this.ctx.arcTo(x, y + h, x, y, bl);
+    this.ctx.arcTo(x, y, x + w, y, tl);
+    this.ctx.closePath();
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
+  }
+
+  rect(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    tl: number,
+    tr: number,
+    br: number,
+    bl: number
+  ) {
+    if (this._style.rectMode == this.CENTER) {
+      this.roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
+    } else if (this._style.rectMode == this.RADIUS) {
+      this.roundedRectImpl(x - w, y - h, w * 2, h * 2, tl, tr, br, bl);
+    } else if (this._style.rectMode == this.CORNER) {
+      this.roundedRectImpl(x, y, w, h, tl, tr, br, bl);
+    } else if (this._style.rectMode == this.CORNERS) {
+      this.roundedRectImpl(x, y, w - x, h - y, tl, tr, br, bl);
+    }
+  }
+
+  square(
+    x: number,
+    y: number,
+    s: number,
+    tl: number,
+    tr: number,
+    br: number,
+    bl: number
+  ) {
+    return this.rect(x, y, s, s, tl, tr, br, bl);
+  }
+
+  clearBuff() {
+    this.curveBuff = [];
+  }
+
+  beginShape() {
+    this.clearBuff();
+    this.ctx.beginPath();
+    this.firstVertex = true;
+  }
+  beginContour() {
+    this.ctx.closePath();
+    this.clearBuff();
+    this.firstVertex = true;
+  }
+  endContour() {
+    this.clearBuff();
+    this.firstVertex = true;
+  }
+  vertex(x: number, y: number) {
+    this.clearBuff();
+    if (this.firstVertex) {
+      this.ctx.moveTo(x, y);
+    } else {
+      this.ctx.lineTo(x, y);
+    }
+    this.firstVertex = false;
+  }
+
+  bezierVertex(
+    cp1x: number,
+    cp1y: number,
+    cp2x: number,
+    cp2y: number,
+    x: number,
+    y: number
+  ) {
+    this.clearBuff();
+    this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+  }
+
+  quadraticVertex(cp1x: number, cp1y: number, x: number, y: number) {
+    this.clearBuff();
+    this.ctx.quadraticCurveTo(cp1x, cp1y, x, y);
+  }
+
+  bezier(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x3: number,
+    y3: number,
+    x4: number,
+    y4: number
+  ) {
+    this.beginShape();
+    this.vertex(x1, y1);
+    this.bezierVertex(x2, y2, x3, y3, x4, y4);
+    this.endShape();
+  }
+
+  triangle(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+    this.beginShape();
+    this.vertex(x1, y1);
+    this.vertex(x2, y2);
+    this.vertex(x3, y3);
+    this.endShape(this.CLOSE);
+  }
+
+  quad(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x3: number,
+    y3: number,
+    x4: number,
+    y4: number
+  ) {
+    this.beginShape();
+    this.vertex(x1, y1);
+    this.vertex(x2, y2);
+    this.vertex(x3, y3);
+    this.vertex(x4, y4);
+    this.endShape(this.CLOSE);
+  }
+
+  endShape(close?: number) {
+    this.clearBuff();
+    if (close) {
+      this.ctx.closePath();
+    }
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
+    if (this._style.noFill && this._style.noStroke) {
+      // eh.
+      this.ctx.save();
+      this.ctx.fillStyle = 'none';
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
+  catmullRomSpline(
+    p0x: number,
+    p0y: number,
+    p1x: number,
+    p1y: number,
+    p2x: number,
+    p2y: number,
+    p3x: number,
+    p3y: number,
+    numPts: number,
+    alpha: number
+  ) {
+    //https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline
+    function catmullromSplineGetT(
+      t: number,
+      p0x: number,
+      p0y: number,
+      p1x: number,
+      p1y: number,
+      alpha: number
+    ) {
+      let a = Math.pow(p1x - p0x, 2.0) + Math.pow(p1y - p0y, 2.0);
+      let b = Math.pow(a, alpha * 0.5);
+      return b + t;
+    }
+    let pts = [];
+
+    let t0 = 0.0;
+    let t1 = catmullromSplineGetT(t0, p0x, p0y, p1x, p1y, alpha);
+    let t2 = catmullromSplineGetT(t1, p1x, p1y, p2x, p2y, alpha);
+    let t3 = catmullromSplineGetT(t2, p2x, p2y, p3x, p3y, alpha);
+
+    for (let i = 0; i < numPts; i++) {
+      let t = t1 + (i / (numPts - 1)) * (t2 - t1);
+      let s = [
+        (t1 - t) / (t1 - t0),
+        (t - t0) / (t1 - t0),
+        (t2 - t) / (t2 - t1),
+        (t - t1) / (t2 - t1),
+        (t3 - t) / (t3 - t2),
+        (t - t2) / (t3 - t2),
+        (t2 - t) / (t2 - t0),
+        (t - t0) / (t2 - t0),
+        (t3 - t) / (t3 - t1),
+        (t - t1) / (t3 - t1),
+      ];
+      for (let j = 0; j < s.length; j += 2) {
+        if (isNaN(s[j])) {
+          s[j] = 1;
+          s[j + 1] = 0;
+        }
+        if (!isFinite(s[j])) {
+          if (s[j] > 0) {
             s[j] = 1;
             s[j + 1] = 0;
-          }
-          if (!isFinite(s[j])) {
-            if (s[j] > 0) {
-              s[j] = 1;
-              s[j + 1] = 0;
-            } else {
-              s[j] = 0;
-              s[j + 1] = 1;
-            }
+          } else {
+            s[j] = 0;
+            s[j + 1] = 1;
           }
         }
-        let a1x = p0x * s[0] + p1x * s[1];
-        let a1y = p0y * s[0] + p1y * s[1];
-        let a2x = p1x * s[2] + p2x * s[3];
-        let a2y = p1y * s[2] + p2y * s[3];
-        let a3x = p2x * s[4] + p3x * s[5];
-        let a3y = p2y * s[4] + p3y * s[5];
-        let b1x = a1x * s[6] + a2x * s[7];
-        let b1y = a1y * s[6] + a2y * s[7];
-        let b2x = a2x * s[8] + a3x * s[9];
-        let b2y = a2y * s[8] + a3y * s[9];
-        let cx = b1x * s[2] + b2x * s[3];
-        let cy = b1y * s[2] + b2y * s[3];
-        pts.push([cx, cy]);
       }
-      return pts;
+      let a1x = p0x * s[0] + p1x * s[1];
+      let a1y = p0y * s[0] + p1y * s[1];
+      let a2x = p1x * s[2] + p2x * s[3];
+      let a2y = p1y * s[2] + p2y * s[3];
+      let a3x = p2x * s[4] + p3x * s[5];
+      let a3y = p2y * s[4] + p3y * s[5];
+      let b1x = a1x * s[6] + a2x * s[7];
+      let b1y = a1y * s[6] + a2y * s[7];
+      let b2x = a2x * s[8] + a3x * s[9];
+      let b2y = a2y * s[8] + a3y * s[9];
+      let cx = b1x * s[2] + b2x * s[3];
+      let cy = b1y * s[2] + b2y * s[3];
+      pts.push([cx, cy]);
     }
+    return pts;
+  }
 
-    $.curveVertex = function (x, y) {
-      curveBuff.push([x, y]);
-      if (curveBuff.length < 4) {
+  curveVertex(x: number, y: number) {
+    this.curveBuff.push([x, y]);
+    if (this.curveBuff.length < 4) {
+      return;
+    }
+    const p0 = this.curveBuff[this.curveBuff.length - 4];
+    const p1 = this.curveBuff[this.curveBuff.length - 3];
+    const p2 = this.curveBuff[this.curveBuff.length - 2];
+    const p3 = this.curveBuff[this.curveBuff.length - 1];
+    const pts = this.catmullRomSpline(
+      ...p0,
+      ...p1,
+      ...p2,
+      ...p3,
+      this._style.curveDetail,
+      this._style.curveAlpha
+    );
+    for (let i = 0; i < pts.length; i++) {
+      if (this.firstVertex) {
+        this.ctx.moveTo(...pts[i]);
+      } else {
+        this.ctx.lineTo(...pts[i]);
+      }
+      this.firstVertex = false;
+    }
+  }
+
+  curve(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x3: number,
+    y3: number,
+    x4: number,
+    y4: number
+  ) {
+    this.beginShape();
+    this.curveVertex(x1, y1);
+    this.curveVertex(x2, y2);
+    this.curveVertex(x3, y3);
+    this.curveVertex(x4, y4);
+    this.endShape();
+  }
+
+  //================================================================
+  // DRAWING MATRIX
+  //================================================================
+  translate(x: number, y: number) {
+    this.ctx.translate(x, y);
+  }
+  rotate(r: number) {
+    this.ctx.rotate(r);
+  }
+  scale(x: number, y?: number) {
+    if (y == undefined) {
+      y = x;
+    }
+    this.ctx.scale(x, y);
+  }
+  applyMatrix(a: number, b: number, c: number, d: number, e: number, f: number) {
+    this.ctx.transform(a, b, c, d, e, f);
+  }
+  shearX(ang: number) {
+    this.ctx.transform(1, 0, Math.tan(ang), 1, 0, 0);
+  }
+  shearY(ang: number) {
+    this.ctx.transform(1, Math.tan(ang), 0, 1, 0, 0);
+  }
+
+  resetMatrix() {
+    this.ctx.resetTransform();
+    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+  }
+
+  pushMatrix() {
+    this._styleCache.push({ ...this._style });
+    this._style = this._styleCache[this._styleCache.length - 1];
+    this.ctx.save();
+  }
+
+  push() {
+    this._styleCache.push({ ...this._style });
+    this._style = this._styleCache[this._styleCache.length - 1];
+    this.ctx.save();
+  }
+
+  popMatrix() {
+    if (this._styleCache.length - 1) {
+      this._styleCache.pop();
+      this._style = this._styleCache[this._styleCache.length - 1];
+      this.ctx.restore();
+    }
+  }
+
+  pop() {
+    if (this._styleCache.length - 1) {
+      this._styleCache.pop();
+      this._style = this._styleCache[this._styleCache.length - 1];
+      this.ctx.restore();
+    }
+  }
+
+  //================================================================
+  // IMAGING
+  //================================================================
+  image(
+    img,
+    dx: number,
+    dy: number,
+    dWidth?: number,
+    dHeight?: number,
+    sx?: number,
+    sy?: number,
+    sWidth?: number,
+    sHeight?: number
+  ) {
+    let drawable = img.MAGIC == this.MAGIC ? img.canvas : img;
+
+    const reset = () => {
+      if (img.MAGIC != this.MAGIC || !this._tint) {
         return;
       }
-      let p0 = curveBuff[curveBuff.length - 4];
-      let p1 = curveBuff[curveBuff.length - 3];
-      let p2 = curveBuff[curveBuff.length - 2];
-      let p3 = curveBuff[curveBuff.length - 1];
-      let pts = catmullRomSpline(
-        ...p0,
-        ...p1,
-        ...p2,
-        ...p3,
-        $._style.curveDetail,
-        $._style.curveAlpha
-      );
-      for (let i = 0; i < pts.length; i++) {
-        if (firstVertex) {
-          ctx.moveTo(...pts[i]);
-        } else {
-          ctx.lineTo(...pts[i]);
-        }
-        firstVertex = false;
+      let c = img.canvas.getContext('2d');
+      c.save();
+      c.resetTransform();
+      c.clearRect(0, 0, c.canvas.width, c.canvas.height);
+      c.drawImage(this.tmpCt2.canvas, 0, 0);
+      c.restore();
+    };
+    if (img.MAGIC == this.MAGIC && this._tint != null) {
+      this.makeTmpCt2(img.canvas.width, img.canvas.height);
+      this.tmpCt2.drawImage(img.canvas, 0, 0);
+      img.tinted(this._tint);
+    }
+    if (!dWidth) {
+      if (img.MAGIC == this.MAGIC || img.width) {
+        this.ctx.drawImage(drawable, dx, dy, img.width, img.height);
+      } else {
+        this.ctx.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
       }
-    };
-    $.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      $.beginShape();
-      $.curveVertex(x1, y1);
-      $.curveVertex(x2, y2);
-      $.curveVertex(x3, y3);
-      $.curveVertex(x4, y4);
-      $.endShape();
-    };
-
-    //================================================================
-    // DRAWING MATRIX
-    //================================================================
-    $.translate = function (x, y) {
-      ctx.translate(x, y);
-    };
-    $.rotate = function (r) {
-      ctx.rotate(r);
-    };
-    $.scale = function (x, y) {
-      if (y == undefined) {
-        y = x;
-      }
-      ctx.scale(x, y);
-    };
-    $.applyMatrix = function (a, b, c, d, e, f) {
-      ctx.transform(a, b, c, d, e, f);
-    };
-    $.shearX = function (ang) {
-      ctx.transform(1, 0, Math.tan(ang), 1, 0, 0);
-    };
-    $.shearY = function (ang) {
-      ctx.transform(1, Math.tan(ang), 0, 1, 0, 0);
-    };
-
-    $.resetMatrix = function () {
-      ctx.resetTransform();
-      ctx.scale($._pixelDensity, $._pixelDensity);
-    };
-
-    $.pushMatrix = $.push = function () {
-      $._styleCache.push({ ...$._style });
-      $._style = $._styleCache[$._styleCache.length - 1];
-      ctx.save();
-    };
-    $.popMatrix = $.pop = function () {
-      if ($._styleCache.length - 1) {
-        $._styleCache.pop();
-        $._style = $._styleCache[$._styleCache.length - 1];
-        ctx.restore();
-      }
-    };
-
-    //================================================================
-    // IMAGING
-    //================================================================
-    $.image = function (img, dx, dy, dWidth, dHeight, sx, sy, sWidth, sHeight) {
-      let drawable = img.MAGIC == $.MAGIC ? img.canvas : img;
-      function reset() {
-        if (img.MAGIC != $.MAGIC || !$._tint) {
-          return;
-        }
-        let c = img.canvas.getContext('2d');
-        c.save();
-        c.resetTransform();
-        c.clearRect(0, 0, c.canvas.width, c.canvas.height);
-        c.drawImage(tmpCt2.canvas, 0, 0);
-        c.restore();
-      }
-      if (img.MAGIC == $.MAGIC && $._tint != null) {
-        makeTmpCt2(img.canvas.width, img.canvas.height);
-        tmpCt2.drawImage(img.canvas, 0, 0);
-        img.tinted($._tint);
-      }
-      if (!dWidth) {
-        if (img.MAGIC == $.MAGIC || img.width) {
-          ctx.drawImage(drawable, dx, dy, img.width, img.height);
-        } else {
-          ctx.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
-        }
-        reset();
-        return;
-      }
-      if (!sx) {
-        ctx.drawImage(drawable, dx, dy, dWidth, dHeight);
-        reset();
-        return;
-      }
-      if (!sWidth) {
-        sWidth = drawable.width;
-      }
-      if (!sHeight) {
-        sHeight = drawable.height;
-      }
-      ctx.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
       reset();
-    };
+      return;
+    }
+    if (!sx && dHeight) {
+      this.ctx.drawImage(drawable, dx, dy, dWidth, dHeight);
+      reset();
+      return;
+    }
+    if (!sWidth) {
+      sWidth = drawable.width;
+    }
+    if (!sHeight) {
+      sHeight = drawable.height;
+    }
+    if (!sx || !sy || !sWidth || !sHeight || !dHeight) return;
+    this.ctx.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+    reset();
+  }
 
-    $.loadPixels = function () {
-      imgData = ctx.getImageData(0, 0, $.canvas.width, $.canvas.height);
-      $.pixels = imgData.data;
-    };
-    $.updatePixels = function () {
-      if (imgData != null) {
-        ctx.putImageData(imgData, 0, 0);
+  loadPixels() {
+    this.imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    this.pixels = this.imgData.data;
+  }
+
+  updatePixels() {
+    if (this.imgData != null) {
+      this.ctx.putImageData(this.imgData, 0, 0);
+    }
+  }
+
+  loadImage(url: string, callback: Function) {
+    this.preloadCnt++;
+    let g = this.createGraphics(100, 100);
+    let c = g.canvas.getContext('2d');
+    let img = new Image();
+    img.src = url;
+    img.crossOrigin = 'Anonymous';
+    if (!c) return;
+    img.onload = () => {
+      c.canvas.width = img.width;
+      c.canvas.height = img.height;
+      g.width = img.width;
+      g.height = img.height;
+      c.drawImage(img, 0, 0);
+      this.preloadCnt--;
+      if (callback) {
+        callback(g);
       }
     };
+    return g;
+  }
 
-    $.loadImage = function (url, callback) {
-      preloadCnt++;
-      let g = $.createGraphics(100, 100);
-      let c = g.canvas.getContext('2d');
-      let img = new Image();
-      img.src = url;
-      img.crossOrigin = 'Anonymous';
-      img.onload = function () {
-        c.canvas.width = img.width;
-        c.canvas.height = img.height;
-        g.width = img.width;
-        g.height = img.height;
-        c.drawImage(img, 0, 0);
-        preloadCnt--;
-        if (callback) {
-          callback(g);
+  makeTmpBuf() {
+    let l = this.ctx.canvas.width * this.ctx.canvas.height * 4;
+    if (this.tmpBuf == null || l != this.tmpBuf.length) {
+      this.tmpBuf = new Uint8ClampedArray(l);
+    }
+  }
+  makeTmpCtx(w?: number, h?: number) {
+    if (this.tmpCtx == null) {
+      this.tmpCtx = document.createElement('canvas').getContext('2d');
+      // document.body.appendChild(tmpCtx.canvas)
+    }
+    if (w == undefined) {
+      w = this.ctx.canvas.width;
+      h = this.ctx.canvas.height;
+    }
+    if (this.tmpCtx.canvas.width != w || this.tmpCtx.canvas.height != h) {
+      this.tmpCtx.canvas.width = w;
+      this.tmpCtx.canvas.height = h;
+    }
+  }
+  makeTmpCt2(w: number, h: number) {
+    if (this.tmpCt2 == null) {
+      this.tmpCt2 = document.createElement('canvas').getContext('2d');
+      // document.body.appendChild(this.tmpCt2.canvas)
+    }
+    if (w == undefined) {
+      w = this.ctx.canvas.width;
+      h = this.ctx.canvas.height;
+    }
+    if (this.tmpCt2.canvas.width != w || this.tmpCt2.canvas.height != h) {
+      this.tmpCt2.canvas.width = w;
+      this.tmpCt2.canvas.height = h;
+    }
+  }
+
+  nativeFilter(filtstr: string) {
+    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.filter = filtstr;
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.restore();
+  }
+
+  filter(typ: number, x: number) {
+    let support = this.HARDWARE_FILTERS && this.ctx.filter != undefined;
+    if (support) {
+      this.makeTmpCtx();
+      if (typ == this.THRESHOLD) {
+        if (x == undefined) {
+          x = 0.5;
         }
-      };
-      return g;
-    };
-
-    let filterImpl = {};
-    filterImpl[$.THRESHOLD] = function (data, thresh) {
-      if (thresh == undefined) {
-        thresh = 127.5;
+        x = Math.max(x, 0.00001);
+        let b = Math.floor((0.5 / x) * 100);
+        this.nativeFilter(`saturate(0%) brightnessthis{b}%) contrast(1000000%)`);
+      } else if (typ == this.GRAY) {
+        this.nativeFilter(`saturate(0%)`);
+      } else if (typ == this.OPAQUE) {
+        this.tmpCtx.fillStyle = 'black';
+        this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+        this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+        this.ctx.save();
+        this.ctx.resetTransform();
+        this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+        this.ctx.restore();
+      } else if (typ == this.INVERT) {
+        this.nativeFilter(`invert(100%)`);
+      } else if (typ == this.BLUR) {
+        this.nativeFilter(`blur${Math.ceil((x * this._pixelDensity) / 1) || 1}px)`);
       } else {
-        thresh *= 255;
+        let imgData = this.ctx.getImageData(
+          0,
+          0,
+          this.ctx.canvas.width,
+          this.ctx.canvas.height
+        );
+        this.filterImpl[typ](imgData.data, x);
+        this.ctx.putImageData(imgData, 0, 0);
       }
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        data[i] = data[i + 1] = data[i + 2] = gray >= thresh ? 255 : 0;
-      }
-    };
-    filterImpl[$.GRAY] = function (data) {
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        data[i] = data[i + 1] = data[i + 2] = gray;
-      }
-    };
-    filterImpl[$.OPAQUE] = function (data) {
-      for (let i = 0; i < data.length; i += 4) {
-        data[i + 3] = 255;
-      }
-    };
-    filterImpl[$.INVERT] = function (data) {
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = 255 - data[i];
-        data[i + 1] = 255 - data[i + 1];
-        data[i + 2] = 255 - data[i + 2];
-      }
-    };
-    filterImpl[$.POSTERIZE] = function (data, lvl) {
-      let lvl1 = lvl - 1;
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = (((data[i] * lvl) >> 8) * 255) / lvl1;
-        data[i + 1] = (((data[i + 1] * lvl) >> 8) * 255) / lvl1;
-        data[i + 2] = (((data[i + 2] * lvl) >> 8) * 255) / lvl1;
-      }
-    };
-
-    filterImpl[$.DILATE] = function (data) {
-      makeTmpBuf();
-      tmpBuf.set(data);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let l = 4 * Math.max(j - 1, 0);
-          let r = 4 * Math.min(j + 1, w - 1);
-          let t = 4 * Math.max(i - 1, 0) * w;
-          let b = 4 * Math.min(i + 1, h - 1) * w;
-          let oi = 4 * i * w;
-          let oj = 4 * j;
-          for (let k = 0; k < 4; k++) {
-            let kt = k + t;
-            let kb = k + b;
-            let ko = k + oi;
-            data[oi + oj + k] = Math.max(
-              /*tmpBuf[kt+l],*/ tmpBuf[kt + oj] /*tmpBuf[kt+r],*/,
-              tmpBuf[ko + l],
-              tmpBuf[ko + oj],
-              tmpBuf[ko + r],
-              /*tmpBuf[kb+l],*/ tmpBuf[kb + oj] /*tmpBuf[kb+r],*/
-            );
-          }
-        }
-      }
-    };
-    filterImpl[$.ERODE] = function (data) {
-      makeTmpBuf();
-      tmpBuf.set(data);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let l = 4 * Math.max(j - 1, 0);
-          let r = 4 * Math.min(j + 1, w - 1);
-          let t = 4 * Math.max(i - 1, 0) * w;
-          let b = 4 * Math.min(i + 1, h - 1) * w;
-          let oi = 4 * i * w;
-          let oj = 4 * j;
-          for (let k = 0; k < 4; k++) {
-            let kt = k + t;
-            let kb = k + b;
-            let ko = k + oi;
-            data[oi + oj + k] = Math.min(
-              /*tmpBuf[kt+l],*/ tmpBuf[kt + oj] /*tmpBuf[kt+r],*/,
-              tmpBuf[ko + l],
-              tmpBuf[ko + oj],
-              tmpBuf[ko + r],
-              /*tmpBuf[kb+l],*/ tmpBuf[kb + oj] /*tmpBuf[kb+r],*/
-            );
-          }
-        }
-      }
-    };
-
-    filterImpl[$.BLUR] = function (data, rad) {
-      rad = rad || 1;
-      rad = Math.floor(rad * $._pixelDensity);
-      makeTmpBuf();
-      tmpBuf.set(data);
-
-      let ksize = rad * 2 + 1;
-
-      function gauss1d(ksize) {
-        let im = new Float32Array(ksize);
-        let sigma = 0.3 * rad + 0.8;
-        let ss2 = sigma * sigma * 2;
-        for (let i = 0; i < ksize; i++) {
-          let x = i - ksize / 2;
-          let z = Math.exp(-(x * x) / ss2) / (2.5066282746 * sigma);
-          im[i] = z;
-        }
-        return im;
-      }
-
-      let kern = gauss1d(ksize);
-      let [w, h] = [ctx.canvas.width, ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let s0 = 0,
-            s1 = 0,
-            s2 = 0,
-            s3 = 0;
-          for (let k = 0; k < ksize; k++) {
-            let jk = Math.min(Math.max(j - rad + k, 0), w - 1);
-            let idx = 4 * (i * w + jk);
-            s0 += tmpBuf[idx] * kern[k];
-            s1 += tmpBuf[idx + 1] * kern[k];
-            s2 += tmpBuf[idx + 2] * kern[k];
-            s3 += tmpBuf[idx + 3] * kern[k];
-          }
-          let idx = 4 * (i * w + j);
-          data[idx] = s0;
-          data[idx + 1] = s1;
-          data[idx + 2] = s2;
-          data[idx + 3] = s3;
-        }
-      }
-      tmpBuf.set(data);
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let s0 = 0,
-            s1 = 0,
-            s2 = 0,
-            s3 = 0;
-          for (let k = 0; k < ksize; k++) {
-            let ik = Math.min(Math.max(i - rad + k, 0), h - 1);
-            let idx = 4 * (ik * w + j);
-            s0 += tmpBuf[idx] * kern[k];
-            s1 += tmpBuf[idx + 1] * kern[k];
-            s2 += tmpBuf[idx + 2] * kern[k];
-            s3 += tmpBuf[idx + 3] * kern[k];
-          }
-          let idx = 4 * (i * w + j);
-          data[idx] = s0;
-          data[idx + 1] = s1;
-          data[idx + 2] = s2;
-          data[idx + 3] = s3;
-        }
-      }
-    };
-
-    function makeTmpCtx(w, h) {
-      if (tmpCtx == null) {
-        tmpCtx = document.createElement('canvas').getContext('2d');
-        // document.body.appendChild(tmpCtx.canvas)
-      }
-      if (w == undefined) {
-        w = ctx.canvas.width;
-        h = ctx.canvas.height;
-      }
-      if (tmpCtx.canvas.width != w || tmpCtx.canvas.height != h) {
-        tmpCtx.canvas.width = w;
-        tmpCtx.canvas.height = h;
-      }
-    }
-    function makeTmpCt2(w, h) {
-      if (tmpCt2 == null) {
-        tmpCt2 = document.createElement('canvas').getContext('2d');
-        // document.body.appendChild(tmpCt2.canvas)
-      }
-      if (w == undefined) {
-        w = ctx.canvas.width;
-        h = ctx.canvas.height;
-      }
-      if (tmpCt2.canvas.width != w || tmpCt2.canvas.height != h) {
-        tmpCt2.canvas.width = w;
-        tmpCt2.canvas.height = h;
-      }
-    }
-
-    function makeTmpBuf() {
-      let l = ctx.canvas.width * ctx.canvas.height * 4;
-      if (tmpBuf == null || l != tmpBuf.length) {
-        tmpBuf = new Uint8ClampedArray(l);
-      }
-    }
-
-    function nativeFilter(filtstr) {
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.filter = filtstr;
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.restore();
-    }
-
-    $.filter = function (typ, x) {
-      let support = $.HARDWARE_FILTERS && ctx.filter != undefined;
-      if (support) {
-        makeTmpCtx();
-        if (typ == $.THRESHOLD) {
-          if (x == undefined) {
-            x = 0.5;
-          }
-          x = Math.max(x, 0.00001);
-          let b = Math.floor((0.5 / x) * 100);
-          nativeFilter(`saturate(0%) brightness(${b}%) contrast(1000000%)`);
-        } else if (typ == $.GRAY) {
-          nativeFilter(`saturate(0%)`);
-        } else if (typ == $.OPAQUE) {
-          tmpCtx.fillStyle = 'black';
-          tmpCtx.fillRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-          tmpCtx.drawImage(ctx.canvas, 0, 0);
-          ctx.save();
-          ctx.resetTransform();
-          ctx.drawImage(tmpCtx.canvas, 0, 0);
-          ctx.restore();
-        } else if (typ == $.INVERT) {
-          nativeFilter(`invert(100%)`);
-        } else if (typ == $.BLUR) {
-          nativeFilter(`blur(${Math.ceil((x * $._pixelDensity) / 1) || 1}px)`);
-        } else {
-          let imgData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-          filterImpl[typ](imgData.data, x);
-          ctx.putImageData(imgData, 0, 0);
-        }
-      } else {
-        let imgData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        filterImpl[typ](imgData.data, x);
-        ctx.putImageData(imgData, 0, 0);
-      }
-    };
-
-    $.resize = function (w, h) {
-      makeTmpCtx();
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      $.width = w;
-      $.height = h;
-      ctx.canvas.width = w * $._pixelDensity;
-      ctx.canvas.height = h * $._pixelDensity;
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.restore();
-    };
-
-    $.get = function (x, y, w, h) {
-      if (x != undefined && w == undefined) {
-        let c = ctx.getImageData(x, y, 1, 1).data;
-        return new $.Color(c[0], c[1], c[2], c[3] / 255);
-      }
-      x = x || 0;
-      y = y || 0;
-      w = w || $.width;
-      h = h || $.height;
-      let g = $.createGraphics(w, h);
-      g.pixelDensity($._pixelDensity);
-      let imgData = ctx.getImageData(
-        x * $._pixelDensity,
-        y * $._pixelDensity,
-        w * $._pixelDensity,
-        h * $._pixelDensity
+    } else {
+      let imgData = this.ctx.getImageData(
+        0,
+        0,
+        this.ctx.canvas.width,
+        this.ctx.canvas.height
       );
-      g.canvas.getContext('2d').putImageData(imgData, 0, 0);
-      return g;
-    };
+      this.filterImpl[typ](imgData.data, x);
+      this.ctx.putImageData(imgData, 0, 0);
+    }
+  }
 
-    $.set = function (x, y, c) {
-      if (c.MAGIC == $.MAGIC) {
-        let old = $._tint;
-        $._tint = null;
-        $.image(c, x, y);
-        $._tint = old;
-        return;
+  resize(w: number, h: number) {
+    this.makeTmpCtx();
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.width = w;
+    this.height = h;
+    this.ctx.canvas.width = w * this._pixelDensity;
+    this.ctx.canvas.height = h * this._pixelDensity;
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(
+      this.tmpCtx.canvas,
+      0,
+      0,
+      this.ctx.canvas.width,
+      this.ctx.canvas.height
+    );
+    this.ctx.restore();
+  }
+
+  get(x: number, y: number, w?: number, h?: number) {
+    if (x != undefined && w == undefined) {
+      let c = this.ctx.getImageData(x, y, 1, 1).data;
+      return new Color(c[0], c[1], c[2], c[3] / 255);
+    }
+    x = x || 0;
+    y = y || 0;
+    w = w || this.width;
+    h = h || this.height;
+    let g = this.createGraphics(w, h);
+    g.pixelDensity(this._pixelDensity);
+    let imgData = this.ctx.getImageData(
+      x * this._pixelDensity,
+      y * this._pixelDensity,
+      w * this._pixelDensity,
+      h * this._pixelDensity
+    );
+    g.canvas.getContext('2d').putImageData(imgData, 0, 0);
+    return g;
+  }
+
+  set(x: number, y: number, c) {
+    if (c.MAGIC == this.MAGIC) {
+      let old = this._tint;
+      this._tint = null;
+      this.image(c, x, y);
+      this._tint = old;
+      return;
+    }
+    let idx =
+      4 * (y * this._pixelDensity * this.ctx.canvas.width + x * this._pixelDensity);
+    this.pixels[idx] = c._r;
+    this.pixels[idx + 1] = c._g;
+    this.pixels[idx + 2] = c._b;
+    this.pixels[idx + 3] = c._a * 255;
+  }
+
+  tinted() {
+    let col = this.color(...arguments);
+    let alpha = col._a;
+    col._a = 1;
+    this.makeTmpCtx();
+    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.fillStyle = col;
+    this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.globalCompositeOperation = 'multiply';
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.globalCompositeOperation = 'source-over';
+
+    this.ctx.save();
+    this.ctx.resetTransform();
+    let old = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'source-in';
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.globalCompositeOperation = old;
+    this.ctx.restore();
+
+    this.tmpCtx.globalAlpha = alpha;
+    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.globalAlpha = 1;
+
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.restore();
+  }
+
+  tint() {
+    this._tint = this.color(...arguments);
+  }
+
+  noTint() {
+    this._tint = null;
+  }
+
+  mask(img: any) {
+    this.ctx.save();
+    this.ctx.resetTransform();
+    let old = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'destination-in';
+    this.ctx.drawImage(img.canvas, 0, 0);
+    this.ctx.globalCompositeOperation = old;
+    this.ctx.restore();
+  }
+
+  clearTemporaryBuffers() {
+    this.tmpCtx = null;
+    this.tmpCt2 = null;
+    this.tmpBuf = null;
+  }
+
+  save(name: string, ext: string) {
+    name = name || 'untitled';
+    ext = ext || 'png';
+    var down = document.createElement('a');
+    down.innerHTML = '[Download]';
+    down.addEventListener(
+      'click',
+      function () {
+        this.href = this.ctx.canvas.toDataURL();
+        this.download = name + '.' + ext;
+      },
+      false
+    );
+    document.body.appendChild(down);
+    down.click();
+    document.body.removeChild(down);
+  }
+
+  saveCanvas(a, b?, c?) {
+    // TODO: Figure out better methodology of checking type?
+    if (a.MAGIC == this.MAGIC) {
+      if (c) {
+        a.save(b, c);
       }
-      let idx = 4 * (y * $._pixelDensity * ctx.canvas.width + x * $._pixelDensity);
-      $.pixels[idx] = c._r;
-      $.pixels[idx + 1] = c._g;
-      $.pixels[idx + 2] = c._b;
-      $.pixels[idx + 3] = c._a * 255;
-    };
+      let s = b.split('.');
+      return a.save(s.slice(0, -1).join('.'), s[s.length - 1]);
+    }
+    if (b) {
+      return this.save(a, b);
+    }
+    let s = a.split('.');
+    return this.save(s.slice(0, -1).join('.'), s[s.length - 1]);
+  }
 
-    $.tinted = function () {
-      let col = $.color(...Array.from(arguments));
-      let alpha = col._a;
-      col._a = 1;
-      makeTmpCtx();
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.fillStyle = col;
-      tmpCtx.fillRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.globalCompositeOperation = 'multiply';
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      tmpCtx.globalCompositeOperation = 'source-over';
+  //================================================================
+  // TYPOGRAPHY
+  //================================================================
 
-      ctx.save();
-      ctx.resetTransform();
-      let old = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.globalCompositeOperation = old;
-      ctx.restore();
-
-      tmpCtx.globalAlpha = alpha;
-      tmpCtx.clearRect(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-      tmpCtx.drawImage(ctx.canvas, 0, 0);
-      tmpCtx.globalAlpha = 1;
-
-      ctx.save();
-      ctx.resetTransform();
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.drawImage(tmpCtx.canvas, 0, 0);
-      ctx.restore();
-    };
-
-    $.tint = function () {
-      $._tint = $.color(...Array.from(arguments));
-    };
-
-    $.noTint = function () {
-      $._tint = null;
-    };
-
-    $.mask = function (img) {
-      ctx.save();
-      ctx.resetTransform();
-      let old = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'destination-in';
-      ctx.drawImage(img.canvas, 0, 0);
-      ctx.globalCompositeOperation = old;
-      ctx.restore();
-    };
-
-    $.clearTemporaryBuffers = function () {
-      tmpCtx = null;
-      tmpCt2 = null;
-      tmpBuf = null;
-    };
-
-    $.save = function (name, ext) {
-      name = name || 'untitled';
-      ext = ext || 'png';
-      var down = document.createElement('a');
-      down.innerHTML = '[Download]';
-      down.addEventListener(
-        'click',
-        function () {
-          this.href = ctx.canvas.toDataURL();
-          this.download = name + '.' + ext;
-        },
-        false
-      );
-      document.body.appendChild(down);
-      down.click();
-      document.body.removeChild(down);
-    };
-    $.saveCanvas = function (a, b, c) {
-      if (a.MAGIC == $.MAGIC) {
-        if (c) {
-          a.save(b, c);
-        }
-        let s = b.split('.');
-        return a.save(s.slice(0, -1).join('.'), s[s.length - 1]);
-      }
-      if (b) {
-        return $.save(a, b);
-      }
-      let s = a.split('.');
-      return $.save(s.slice(0, -1).join('.'), s[s.length - 1]);
-    };
-
-    //================================================================
-    // TYPOGRAPHY
-    //================================================================
-
-    $.loadFont = function (url, callback) {
-      let sp = url.split('/');
-      let name = sp[sp.length - 1].split('.')[0].replace(' ', '');
-      let cssStr = `@font-face {
+  loadFont(url: string): string {
+    let sp = url.split('/');
+    let name = sp[sp.length - 1].split('.')[0].replace(' ', '');
+    let cssStr = `@font-face {
         font-family: '${name}';
         src: url('${url}');
       }`;
-      const style = document.createElement('style');
-      style.textContent = cssStr;
-      document.head.append(style);
-      return name;
-    };
-    $.textFont = function (x) {
-      $._style.textFont = x;
-    };
-    $.textSize = function (x) {
-      $._style.textSize = x;
-      $._style.textLeading = x;
-    };
-    $.textLeading = function (x) {
-      $._style.textLeading = x;
-    };
-    $.textStyle = function (x) {
-      $._style.textStyle = x;
-    };
-    $.textAlign = function (horiz, vert) {
-      ctx.textAlign = horiz;
-      if (vert) {
-        ctx.textBaseline = vert == $.CENTER ? 'middle' : vert;
-      }
-    };
-    $.text = function (str, x, y, w) {
-      if (!str) {
-        return;
-      }
-      str = str.toString();
-      if ($._style.noFill && $._style.noStroke) {
-        return;
-      }
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      let lines = str.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (!$._style.noFill) {
-          ctx.fillText(lines[i], x, y, w);
-        }
-        if (!$._style.noStroke) {
-          ctx.strokeText(lines[i], x, y, w);
-        }
-        y += $._style.textLeading;
-      }
-    };
-    $.textWidth = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).width;
-    };
-    $.textAscent = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).actualBoundingBoxAscent;
-    };
-    $.textDescent = function (str) {
-      ctx.font = `${$._style.textStyle} ${$._style.textSize}px ${$._style.textFont}`;
-      return ctx.measureText(str).actualBoundingBoxDescent;
-    };
+    const style = document.createElement('style');
+    style.textContent = cssStr;
+    document.head.append(style);
+    return name;
+  }
 
-    //================================================================
-    // RANDOM
-    //================================================================
+  textFont(x: string) {
+    this._style.textFont = x;
+  }
+  textSize(x: number) {
+    this._style.textSize = x;
+    this._style.textLeading = x;
+  }
+  textLeading(x: number) {
+    this._style.textLeading = x;
+  }
+  textStyle(x: string) {
+    this._style.textStyle = x;
+  }
 
-    //https://github.com/processing/p5.js/blob/1.1.9/src/math/noise.js
-    var PERLIN_YWRAPB = 4;
-    var PERLIN_YWRAP = 1 << PERLIN_YWRAPB;
-    var PERLIN_ZWRAPB = 8;
-    var PERLIN_ZWRAP = 1 << PERLIN_ZWRAPB;
-    var PERLIN_SIZE = 4095;
-    var perlin_octaves = 4;
-    var perlin_amp_falloff = 0.5;
-    var scaled_cosine = function (i) {
-      return 0.5 * (1.0 - Math.cos(i * Math.PI));
-    };
-    var p_perlin;
-
-    $.noise = function (x, y, z) {
-      y = y || 0;
-      z = z || 0;
-      if (p_perlin == null) {
-        p_perlin = new Array(PERLIN_SIZE + 1);
-        for (var i = 0; i < PERLIN_SIZE + 1; i++) {
-          p_perlin[i] = Math.random();
-        }
+  textAlign(horiz: CanvasTextAlign, vert?: CanvasTextBaseline) {
+    this.ctx.textAlign = horiz;
+    if (vert) {
+      this.ctx.textBaseline = vert == this.CENTER ? 'middle' : vert;
+    }
+  }
+  text(str: string, x: number, y: number, w: number) {
+    if (!str) {
+      return;
+    }
+    str = str.toString();
+    if (this._style.noFill && this._style.noStroke) {
+      return;
+    }
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    let lines = str.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!this._style.noFill) {
+        this.ctx.fillText(lines[i], x, y, w);
       }
-      if (x < 0) {
-        x = -x;
+      if (!this._style.noStroke) {
+        this.ctx.strokeText(lines[i], x, y, w);
       }
-      if (y < 0) {
-        y = -y;
-      }
-      if (z < 0) {
-        z = -z;
-      }
-      var xi = Math.floor(x),
-        yi = Math.floor(y),
-        zi = Math.floor(z);
-      var xf = x - xi;
-      var yf = y - yi;
-      var zf = z - zi;
-      var rxf, ryf;
-      var r = 0;
-      var ampl = 0.5;
-      var n1, n2, n3;
-      for (var o = 0; o < perlin_octaves; o++) {
-        var of = xi + (yi << PERLIN_YWRAPB) + (zi << PERLIN_ZWRAPB);
-        rxf = scaled_cosine(xf);
-        ryf = scaled_cosine(yf);
-        n1 = p_perlin[of & PERLIN_SIZE];
-        n1 += rxf * (p_perlin[(of + 1) & PERLIN_SIZE] - n1);
-        n2 = p_perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-        n2 += rxf * (p_perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n2);
-        n1 += ryf * (n2 - n1);
-        of += PERLIN_ZWRAP;
-        n2 = p_perlin[of & PERLIN_SIZE];
-        n2 += rxf * (p_perlin[(of + 1) & PERLIN_SIZE] - n2);
-        n3 = p_perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-        n3 += rxf * (p_perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n3);
-        n2 += ryf * (n3 - n2);
-        n1 += scaled_cosine(zf) * (n2 - n1);
-        r += n1 * ampl;
-        ampl *= perlin_amp_falloff;
-        xi <<= 1;
-        xf *= 2;
-        yi <<= 1;
-        yf *= 2;
-        zi <<= 1;
-        zf *= 2;
-        if (xf >= 1.0) {
-          xi++;
-          xf--;
-        }
-        if (yf >= 1.0) {
-          yi++;
-          yf--;
-        }
-        if (zf >= 1.0) {
-          zi++;
-          zf--;
-        }
-      }
-      return r;
-    };
+      y += this._style.textLeading;
+    }
+  }
 
-    $.noiseDetail = function (lod, falloff) {
-      if (lod > 0) {
-        perlin_octaves = lod;
-      }
-      if (falloff > 0) {
-        perlin_amp_falloff = falloff;
-      }
-    };
-    const Lcg = function () {
-      const m = 4294967296;
-      const a = 1664525;
-      const c = 1013904223;
-      let seed, z;
-      return {
-        setSeed(val) {
-          z = seed = (val == null ? Math.random() * m : val) >>> 0;
-        },
-        getSeed() {
-          return seed;
-        },
-        rand() {
-          z = (a * z + c) % m;
-          return z / m;
-        },
-      };
-    };
-    const Shr3 = function () {
-      let jsr, seed;
-      let m = 4294967295;
-      return {
-        setSeed(val) {
-          jsr = seed = (val == null ? Math.random() * m : val) >>> 0;
-        },
-        getSeed() {
-          return seed;
-        },
-        rand() {
-          jsr ^= jsr << 17;
-          jsr ^= jsr >> 13;
-          jsr ^= jsr << 5;
-          return (jsr >>> 0) / m;
-        },
-      };
-    };
-    let rng1 = Shr3();
-    rng1.setSeed();
+  textWidth(str: string): number {
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).width;
+  }
 
-    $.noiseSeed = function (seed) {
-      let jsr = seed == undefined ? Math.random() * 4294967295 : seed;
-      if (!p_perlin) {
-        p_perlin = new Float32Array(PERLIN_SIZE + 1);
-      }
-      for (var i = 0; i < PERLIN_SIZE + 1; i++) {
-        jsr ^= jsr << 17;
-        jsr ^= jsr >> 13;
-        jsr ^= jsr << 5;
-        p_perlin[i] = (jsr >>> 0) / 4294967295;
-      }
-    };
-    $.randomSeed = function (seed) {
-      rng1.setSeed(seed);
-    };
-    $.random = function (a, b) {
-      if (a == undefined) {
-        return rng1.rand();
-      }
-      if (typeof a == 'number') {
-        if (b != undefined) {
-          return rng1.rand() * (b - a) + a;
-        } else {
-          return rng1.rand() * a;
-        }
-      } else {
-        return a[~~(a.length * rng1.rand())];
-      }
-    };
-    $.randomGenerator = function (method) {
-      if (method == $.LCG) {
-        rng1 = Lcg();
-      } else if (method == $.SHR3) {
-        rng1 = Shr3();
-      }
-      rng1.setSeed();
-    };
+  textAscent(str: string): number {
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).actualBoundingBoxAscent;
+  }
+  textDescent(str: string): number {
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).actualBoundingBoxDescent;
+  }
 
-    var ziggurat = new (function () {
-      //http://ziggurat.glitch.me/
-      var iz;
-      var jz;
-      var kn = new Array(128);
-      var ke = new Array(256);
-      var hz;
-      var wn = new Array(128);
-      var fn = new Array(128);
-      var we = new Array(256);
-      var fe = new Array(256);
-      var SHR3 = function () {
-        return rng1.rand() * 4294967296 - 2147483648;
-      };
-      var UNI = function () {
-        return 0.5 + (SHR3() << 0) * 0.2328306e-9;
-      };
+  //================================================================
+  // RANDOM
+  //================================================================
 
-      var RNOR = function () {
-        hz = SHR3();
-        iz = hz & 127;
-        return Math.abs(hz) < kn[iz] ? hz * wn[iz] : nfix();
-      };
-      var REXP = function () {
-        jz = SHR3() >>> 0;
-        iz = jz & 255;
-        return jz < kn[iz] ? jz * we[iz] : efix();
-      };
-      var nfix = function () {
-        var r = 3.44262;
-        var x, y;
-        var u1, u2;
-        for (;;) {
-          x = hz * wn[iz];
-          if (iz == 0) {
-            do {
-              u1 = UNI();
-              u2 = UNI();
-              x = -Math.log(u1) * 0.2904764;
-              y = -Math.log(u2);
-            } while (y + y < x * x);
-            return hz > 0 ? r + x : -r - x;
-          }
+  //https://github.com/processing/p5.js/blob/1.1.9/src/math/noise.js
 
-          if (fn[iz] + UNI() * (fn[iz - 1] - fn[iz]) < Math.exp(-0.5 * x * x)) {
-            return x;
-          }
-          hz = SHR3();
-          iz = hz & 127;
-          if (Math.abs(hz) < kn[iz]) {
-            return hz * wn[iz];
-          }
-        }
-      };
-      var efix = function () {
-        var x;
-        for (;;) {
-          if (iz == 0) {
-            return 7.69711 - Math.log(UNI());
-          }
-          x = jz * we[iz];
-          if (fe[iz] + UNI() * (fe[iz - 1] - fe[iz]) < Math.exp(-x)) {
-            return x;
-          }
-          jz = SHR3();
-          iz = jz & 255;
-          if (jz < ke[iz]) {
-            return jz * we[iz];
-          }
-        }
-      };
-
-      var zigset = function () {
-        var m1 = 2147483648;
-        var m2 = 4294967296;
-        var dn = 3.442619855899;
-        var tn = dn;
-        var vn = 9.91256303526217e-3;
-        var q;
-        var de = 7.697117470131487;
-        var te = de;
-        var ve = 3.949659822581572e-3;
-        var i;
-
-        /* Tables for RNOR */
-        q = vn / Math.exp(-0.5 * dn * dn);
-        kn[0] = Math.floor((dn / q) * m1);
-        kn[1] = 0;
-        wn[0] = q / m1;
-        wn[127] = dn / m1;
-        fn[0] = 1;
-        fn[127] = Math.exp(-0.5 * dn * dn);
-        for (i = 126; i >= 1; i--) {
-          dn = Math.sqrt(-2 * Math.log(vn / dn + Math.exp(-0.5 * dn * dn)));
-          kn[i + 1] = Math.floor((dn / tn) * m1);
-          tn = dn;
-          fn[i] = Math.exp(-0.5 * dn * dn);
-          wn[i] = dn / m1;
-        }
-        /*Tables for REXP */
-        q = ve / Math.exp(-de);
-        ke[0] = Math.floor((de / q) * m2);
-        ke[1] = 0;
-        we[0] = q / m2;
-        we[255] = de / m2;
-        fe[0] = 1;
-        fe[255] = Math.exp(-de);
-        for (i = 254; i >= 1; i--) {
-          de = -Math.log(ve / de + Math.exp(-de));
-          ke[i + 1] = Math.floor((de / te) * m2);
-          te = de;
-          fe[i] = Math.exp(-de);
-          we[i] = de / m2;
-        }
-      };
-      this.SHR3 = SHR3;
-      this.UNI = UNI;
-      this.RNOR = RNOR;
-      this.REXP = REXP;
-      this.zigset = zigset;
-    })();
-    ziggurat.hasInit = false;
-
-    $.randomGaussian = function (mean, std) {
-      if (!ziggurat.hasInit) {
-        ziggurat.zigset();
-        ziggurat.hasInit = true;
-      }
-      return ziggurat.RNOR() * std + mean;
-    };
-
-    $.randomExponential = function () {
-      if (!ziggurat.hasInit) {
-        ziggurat.zigset();
-        ziggurat.hasInit = true;
-      }
-      return ziggurat.REXP();
-    };
-
-    //================================================================
-    // ENVIRONMENT
-    //================================================================
-
-    $.print = console.log;
-    $.cursor = function (name, x, y) {
-      let pfx = '';
-      if (name.includes('.')) {
-        name = `url("${name}")`;
-        pfx = ', auto';
-      }
-      if (x != undefined) {
-        name += ' ' + x + ' ' + y;
-      }
-      $.canvas.style.cursor = name + pfx;
-    };
-    $.noCursor = function () {
-      $.canvas.style.cursor = 'none';
-    };
-
-    //================================================================
-    // DOM
-    //================================================================
-
-    $.createCapture = function (x) {
-      var vid = document.createElement('video');
-      vid.playsinline = 'playsinline';
-      vid.autoplay = 'autoplay';
-      navigator.mediaDevices.getUserMedia(x).then(function (stream) {
-        vid.srcObject = stream;
-      });
-      vid.style.position = 'absolute';
-      vid.style.opacity = 0.00001;
-      vid.style.zIndex = -1000;
-      document.body.appendChild(vid);
-      return vid;
-    };
-
-    //================================================================
-    // EVENTS
-    //================================================================
-
-    let eventNames = [
-      'setup',
-      'draw',
-      'preload',
-      'mouseMoved',
-      'mousePressed',
-      'mouseReleased',
-      'mouseDragged',
-      'mouseClicked',
-      'keyPressed',
-      'keyReleased',
-      'keyTyped',
-      'touchStarted',
-      'touchEnded',
-    ];
-    for (let k of eventNames) {
-      let intern = '_' + k + 'Fn';
-      $[intern] = function () {};
-      $[intern].isPlaceHolder = true;
-      if ($[k]) {
-        $[intern] = $[k];
-      } else {
-        Object.defineProperty($, k, {
-          set: function (fun) {
-            $[intern] = fun;
-          },
-        });
+  noise(x: number, y?: number, z?: number): number {
+    y = y || 0;
+    z = z || 0;
+    if (this.p_perlin == null) {
+      this.p_perlin = new Array(this.PERLIN_SIZE + 1);
+      for (var i = 0; i < this.PERLIN_SIZE + 1; i++) {
+        this.p_perlin[i] = Math.random();
       }
     }
-
-    function _draw() {
-      if (!$._noLoop) {
-        if ($._frameRate == null) {
-          looper = requestAnimationFrame(_draw);
-        } else {
-          looper = setTimeout(_draw, 1000 / $._frameRate);
-        }
-      }
-      clearBuff();
-      firstVertex = true;
-      $.push();
-      $._drawFn();
-      $.pop();
-      ++$.frameCount;
+    if (x < 0) {
+      x = -x;
     }
-
-    $.noLoop = function () {
-      $._noLoop = true;
-      looper = null;
-    };
-    $.loop = function () {
-      $._noLoop = false;
-      if (looper == null) {
-        _draw();
+    if (y < 0) {
+      y = -y;
+    }
+    if (z < 0) {
+      z = -z;
+    }
+    var xi = Math.floor(x),
+      yi = Math.floor(y),
+      zi = Math.floor(z);
+    var xf = x - xi;
+    var yf = y - yi;
+    var zf = z - zi;
+    var rxf, ryf;
+    var r = 0;
+    var ampl = 0.5;
+    var n1, n2, n3;
+    for (var o = 0; o < this.perlin_octaves; o++) {
+      var of = xi + (yi << this.PERLIN_YWRAPB) + (zi << this.PERLIN_ZWRAPB);
+      rxf = this.scaled_cosine(xf);
+      ryf = this.scaled_cosine(yf);
+      n1 = this.p_perlin[of & this.PERLIN_SIZE];
+      n1 += rxf * (this.p_perlin[(of + 1) & this.PERLIN_SIZE] - n1);
+      n2 = this.p_perlin[(of + this.PERLIN_YWRAP) & this.PERLIN_SIZE];
+      n2 += rxf * (this.p_perlin[(of + this.PERLIN_YWRAP + 1) & this.PERLIN_SIZE] - n2);
+      n1 += ryf * (n2 - n1);
+      of += this.PERLIN_ZWRAP;
+      n2 = this.p_perlin[of & this.PERLIN_SIZE];
+      n2 += rxf * (this.p_perlin[(of + 1) & this.PERLIN_SIZE] - n2);
+      n3 = this.p_perlin[(of + this.PERLIN_YWRAP) & this.PERLIN_SIZE];
+      n3 += rxf * (this.p_perlin[(of + this.PERLIN_YWRAP + 1) & this.PERLIN_SIZE] - n3);
+      n2 += ryf * (n3 - n2);
+      n1 += this.scaled_cosine(zf) * (n2 - n1);
+      r += n1 * ampl;
+      ampl *= this.perlin_amp_falloff;
+      xi <<= 1;
+      xf *= 2;
+      yi <<= 1;
+      yf *= 2;
+      zi <<= 1;
+      zf *= 2;
+      if (xf >= 1.0) {
+        xi++;
+        xf--;
       }
-    };
-    $.redraw = function () {
-      _draw();
-    };
-    $.frameRate = function (fps) {
-      $._frameRate = fps;
-    };
-
-    setTimeout(function () {
-      $._preloadFn();
-      millisStart = window.performance.now();
-      _start();
-      function _start() {
-        if (preloadCnt > 0) {
-          return setTimeout(_start, 10);
-        }
-        // ctx.save();
-        $._setupFn();
-        // ctx.restore();
-        _draw();
+      if (yf >= 1.0) {
+        yi++;
+        yf--;
       }
-    }, 1);
+      if (zf >= 1.0) {
+        zi++;
+        zf--;
+      }
+    }
+    return r;
+  }
 
-    $.canvas.onmousemove = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
+  noiseDetail(lod: number, falloff: number) {
+    if (lod > 0) {
+      this.perlin_octaves = lod;
+    }
+    if (falloff > 0) {
+      this.perlin_amp_falloff = falloff;
+    }
+  }
 
-      if ($.mouseIsPressed) {
-        $._mouseDraggedFn(event);
+  noiseSeed(seed?: number) {
+    let jsr = seed == undefined ? Math.random() * 4294967295 : seed;
+    if (!this.p_perlin) {
+      this.p_perlin = new Float32Array(this.PERLIN_SIZE + 1);
+    }
+    for (var i = 0; i < this.PERLIN_SIZE + 1; i++) {
+      jsr ^= jsr << 17;
+      jsr ^= jsr >> 13;
+      jsr ^= jsr << 5;
+      this.p_perlin[i] = (jsr >>> 0) / 4294967295;
+    }
+  }
+  randomSeed(seed: number) {
+    this.rng1.setSeed(seed);
+  }
+
+  // TODO: Fix this
+  random(a?, b?) {
+    if (a == undefined) {
+      return this.rng1.rand();
+    }
+    if (typeof a == 'number') {
+      if (b != undefined) {
+        return this.rng1.rand() * (b - a) + a;
       } else {
-        $._mouseMovedFn(event);
+        return this.rng1.rand() * a;
       }
-    };
-    $.canvas.onmousedown = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = true;
-      $.mouseButton = [$.LEFT, $.CENTER, $.RIGHT][event.button];
-      $._mousePressedFn(event);
-    };
-    $.canvas.onmouseup = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = false;
-      $._mouseReleasedFn(event);
-    };
-    $.canvas.onclick = function (event) {
-      $.pmouseX = $.mouseX;
-      $.pmouseY = $.mouseY;
-      $.mouseX = event.offsetX;
-      $.mouseY = event.offsetY;
-      $.mouseIsPressed = true;
-      $._mouseClickedFn(event);
-      $.mouseIsPressed = false;
-    };
-    window.addEventListener('keydown', function (event) {
-      $.keyIsPressed = true;
-      $.key = event.key;
-      $.keyCode = event.keyCode;
-      keysHeld[$.keyCode] = true;
-      $._keyPressedFn(event);
-      if (event.key.length == 1) {
-        $._keyTypedFn(event);
-      }
+    } else {
+      return a[~~(a.length * this.rng1.rand())];
+    }
+  }
+
+  randomGenerator(method: number) {
+    if (method == this.LCG) {
+      this.rng1 = new Lcg();
+    } else if (method == this.SHR3) {
+      this.rng1 = new Shr3();
+    }
+    this.rng1.setSeed();
+  }
+
+  randomGaussian(mean: number, std: number) {
+    if (!this.ziggurat.hasInit) {
+      this.ziggurat.zigset();
+      this.ziggurat.hasInit = true;
+    }
+    return this.ziggurat.RNOR() * std + mean;
+  }
+
+  randomExponential() {
+    if (!this.ziggurat.hasInit) {
+      this.ziggurat.zigset();
+      this.ziggurat.hasInit = true;
+    }
+    return this.ziggurat.REXP();
+  }
+
+  //================================================================
+  // ENVIRONMENT
+  //================================================================
+
+  print() {
+    return console.log;
+  }
+
+  cursor(name: string, x?: number, y?: number) {
+    let pfx = '';
+    if (name.includes('.')) {
+      name = `url("${name}")`;
+      pfx = ', auto';
+    }
+    if (x != undefined) {
+      name += ' ' + x + ' ' + y;
+    }
+    this.canvas.style.cursor = name + pfx;
+  }
+
+  noCursor() {
+    this.canvas.style.cursor = 'none';
+  }
+
+  //================================================================
+  // DOM
+  //================================================================
+
+  // TODO: fix this
+  createCapture(x) {
+    var vid = document.createElement('video');
+    vid.playsinline = 'playsinline';
+    vid.autoplay = 'autoplay';
+    navigator.mediaDevices.getUserMedia(x).then(function (stream) {
+      vid.srcObject = stream;
     });
-    window.addEventListener('keyup', function (event) {
-      $.keyIsPressed = false;
-      $.key = event.key;
-      $.keyCode = event.keyCode;
-      keysHeld[$.keyCode] = false;
-      $._keyReleasedFn(event);
-    });
-    $.keyIsDown = function (x) {
-      return !!keysHeld[x];
-    };
+    vid.style.position = 'absolute';
+    vid.style.opacity = 0.00001;
+    vid.style.zIndex = -1000;
+    document.body.appendChild(vid);
+    return vid;
+  }
 
-    function getTouchInfo(touch) {
-      const rect = $.canvas.getBoundingClientRect();
-      const sx = $.canvas.scrollWidth / $.width || 1;
-      const sy = $.canvas.scrollHeight / $.height || 1;
-      return {
-        x: (touch.clientX - rect.left) / sx,
-        y: (touch.clientY - rect.top) / sy,
-        id: touch.identifier,
-      };
-    }
-    function isTouchUnaware() {
-      return (
-        $._touchStarted.isPlaceHolder &&
-        $._touchMoved.isPlaceHolder &&
-        $._touchEnded.isPlaceHolder
-      );
-    }
-    $.canvas.ontouchstart = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = true;
-        $.mouseButton = $.LEFT;
-        if (!$._mousePressedFn(event)) {
-          event.preventDefault();
-        }
-      }
-      if (!$._touchStartedFn(event)) {
-        event.preventDefault();
-      }
-    };
-    $.canvas.ontouchmove = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = true;
-        $.mouseButton = $.LEFT;
-        if (!$._mouseDraggedFn(event)) {
-          event.preventDefault();
-        }
-      }
-      if (!$._touchMovedFn(event)) {
-        event.preventDefault();
-      }
-    };
-    $.canvas.ontouchend = $.canvas.ontouchcancel = function (event) {
-      $.touches = event.touches.map(getTouchInfo);
-      if (isTouchUnaware()) {
-        $.pmouseX = $.mouseX;
-        $.pmouseY = $.mouseY;
-        $.mouseX = $.touches[0].x;
-        $.mouseY = $.touches[0].y;
-        $.mouseIsPressed = false;
-        if (!$._mouseReleasedFn(event)) {
-          event.preventDefault();
-        }
-      }
-      if (!$._touchEndedFn(event)) {
-        event.preventDefault();
-      }
-    };
+  //================================================================
+  // EVENTS
+  //================================================================
 
-    $.hasSensorPermission =
-      (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) ||
-      !(DeviceOrientationEvent.requestPermission || DeviceMotionEvent.requestPermission);
-    $.requestSensorPermissions = function () {
-      if (DeviceOrientationEvent.requestPermission) {
-        DeviceOrientationEvent.requestPermission()
-          .then((response) => {
-            if (response == 'granted') {
-              if (DeviceMotionEvent.requestPermission) {
-                DeviceMotionEvent.requestPermission()
-                  .then((response) => {
-                    if (response == 'granted') {
-                      $.hasSensorPermission = true;
-                    }
-                  })
-                  .catch(alert);
-              }
+  // FIX THIS
+  _draw() {
+    if (!this._noLoop) {
+      if (this._frameRate == null) {
+        this.looper = requestAnimationFrame(this._draw);
+      } else {
+        this.looper = setTimeout(this._draw, 1000 / this._frameRate);
+      }
+    }
+    this.clearBuff();
+    this.firstVertex = true;
+    this.push();
+    this._drawFn();
+    this.pop();
+    ++this.frameCount;
+  }
+
+  noLoop() {
+    this._noLoop = true;
+    this.looper = null;
+  }
+  loop() {
+    this._noLoop = false;
+    if (this.looper == null) {
+      this._draw();
+    }
+  }
+  redraw() {
+    this._draw();
+  }
+
+  frameRate(fps: number) {
+    this._frameRate = fps;
+  }
+
+  _start() {
+    if (this.preloadCnt > 0) {
+      return setTimeout(this._start, 10);
+    }
+    // ctx.save();
+    this._setupFn();
+    // ctx.restore();
+    this._draw();
+  }
+
+  keyIsDown(x) {
+    return !!this.keysHeld[x];
+  }
+
+  getTouchInfo(touch) {
+    const rect = this.canvas.getBoundingClientRect();
+    const sx = this.canvas.scrollWidth / this.width || 1;
+    const sy = this.canvas.scrollHeight / this.height || 1;
+    return {
+      x: (touch.clientX - rect.left) / sx,
+      y: (touch.clientY - rect.top) / sy,
+      id: touch.identifier,
+    };
+  }
+
+  isTouchUnaware() {
+    return (
+      this._touchStarted.isPlaceHolder &&
+      this._touchMoved.isPlaceHolder &&
+      this._touchEnded.isPlaceHolder
+    );
+  }
+
+  requestSensorPermissions() {
+    if (DeviceOrientationEvent.requestPermission) {
+      DeviceOrientationEvent.requestPermission()
+        .then((response) => {
+          if (response == 'granted') {
+            if (DeviceMotionEvent.requestPermission) {
+              DeviceMotionEvent.requestPermission()
+                .then((response) => {
+                  if (response == 'granted') {
+                    this.hasSensorPermission = true;
+                  }
+                })
+                .catch(alert);
             }
-          })
-          .catch(alert);
-      }
-    };
+          }
+        })
+        .catch(alert);
+    }
+  }
 
-    //================================================================
-    // SENSORS
-    //================================================================
+  //================================================================
+  // TIME
+  //================================================================
 
-    // 3d transformation helpers
-    let ROTX = (a) => [
-      1,
-      0,
-      0,
-      0,
-      0,
-      Math.cos(a),
-      -Math.sin(a),
-      0,
-      0,
-      Math.sin(a),
-      Math.cos(a),
-      0,
-      0,
-      0,
-      0,
-      1,
-    ];
-    let ROTY = (a) => [
-      Math.cos(a),
-      0,
-      Math.sin(a),
-      0,
-      0,
-      1,
-      0,
-      0,
-      -Math.sin(a),
-      0,
-      Math.cos(a),
-      0,
-      0,
-      0,
-      0,
-      1,
-    ];
-    let MULT = (A, B) => [
-      A[0] * B[0] + A[1] * B[4] + A[2] * B[8] + A[3] * B[12],
-      A[0] * B[1] + A[1] * B[5] + A[2] * B[9] + A[3] * B[13],
-      A[0] * B[2] + A[1] * B[6] + A[2] * B[10] + A[3] * B[14],
-      A[0] * B[3] + A[1] * B[7] + A[2] * B[11] + A[3] * B[15],
-      A[4] * B[0] + A[5] * B[4] + A[6] * B[8] + A[7] * B[12],
-      A[4] * B[1] + A[5] * B[5] + A[6] * B[9] + A[7] * B[13],
-      A[4] * B[2] + A[5] * B[6] + A[6] * B[10] + A[7] * B[14],
-      A[4] * B[3] + A[5] * B[7] + A[6] * B[11] + A[7] * B[15],
-      A[8] * B[0] + A[9] * B[4] + A[10] * B[8] + A[11] * B[12],
-      A[8] * B[1] + A[9] * B[5] + A[10] * B[9] + A[11] * B[13],
-      A[8] * B[2] + A[9] * B[6] + A[10] * B[10] + A[11] * B[14],
-      A[8] * B[3] + A[9] * B[7] + A[10] * B[11] + A[11] * B[15],
-      A[12] * B[0] + A[13] * B[4] + A[14] * B[8] + A[15] * B[12],
-      A[12] * B[1] + A[13] * B[5] + A[14] * B[9] + A[15] * B[13],
-      A[12] * B[2] + A[13] * B[6] + A[14] * B[10] + A[15] * B[14],
-      A[12] * B[3] + A[13] * B[7] + A[14] * B[11] + A[15] * B[15],
-    ];
-    let TRFM = (A, v) => [
-      (A[0] * v[0] + A[1] * v[1] + A[2] * v[2] + A[3]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-      (A[4] * v[0] + A[5] * v[1] + A[6] * v[2] + A[7]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-      (A[8] * v[0] + A[9] * v[1] + A[10] * v[2] + A[11]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-    ];
-
-    window.ondeviceorientation = function (event) {
-      $.pRotationX = $.rotationX;
-      $.pRotationY = $.rotationY;
-      $.pRotationZ = $.rotationZ;
-      $.pRelRotationX = $.relRotationX;
-      $.pRelRotationY = $.relRotationY;
-      $.pRelRotationZ = $.relRotationZ;
-
-      $.rotationX = event.beta * (Math.PI / 180.0);
-      $.rotationY = event.gamma * (Math.PI / 180.0);
-      $.rotationZ = event.alpha * (Math.PI / 180.0);
-      $.relRotationX = [-$.rotationY, -$.rotationX, $.rotationY][
-        ~~(window.orientation / 90) + 1
-      ];
-      $.relRotationY = [-$.rotationX, $.rotationY, $.rotationX][
-        ~~(window.orientation / 90) + 1
-      ];
-      $.relRotationZ = $.rotationZ;
-    };
-    window.ondevicemotion = function (event) {
-      $.pAccelerationX = $.accelerationX;
-      $.pAccelerationY = $.accelerationY;
-      $.pAccelerationZ = $.accelerationZ;
-      if (!event.acceleration) {
-        // devices that don't support plain acceleration
-        // compute gravitational acceleration's component on X Y Z axes based on gyroscope
-        // g = ~ 9.80665
-        let grav = TRFM(MULT(ROTY($.rotationY), ROTX($.rotationX)), [0, 0, -9.80665]);
-        $.accelerationX = event.accelerationIncludingGravity.x + grav[0];
-        $.accelerationY = event.accelerationIncludingGravity.y + grav[1];
-        $.accelerationZ = event.accelerationIncludingGravity.z - grav[2];
-      }
-    };
-
-    //================================================================
-    // TIME
-    //================================================================
-
-    $.year = function () {
-      return new Date().getFullYear();
-    };
-    $.day = function () {
-      return new Date().getDay();
-    };
-    $.hour = function () {
-      return new Date().getHours();
-    };
-    $.minute = function () {
-      return new Date().getMinutes();
-    };
-    $.second = function () {
-      return new Date().getSeconds();
-    };
-    $.millis = function () {
-      return window.performance.now() - millisStart;
-    };
+  year() {
+    return new Date().getFullYear();
+  }
+  day() {
+    return new Date().getDay();
+  }
+  hour() {
+    return new Date().getHours();
+  }
+  minute() {
+    return new Date().getMinutes();
+  }
+  second() {
+    return new Date().getSeconds();
+  }
+  millis() {
+    return window.performance.now() - this.millisStart;
   }
 }
 
