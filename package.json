@@ -1,10 +1,40 @@
 {
-  "name": "q5xjs",
-  "version": "0.0.3",
-  "description": "A small and fast alternative (experimental) implementation of p5.js",
+  "name": "q5xts",
+  "version": "0.0.1",
+  "description": "A small and fast alternative (experimental) implementation of p5.js in TypeScript",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LingDong-/q5xjs.git"
+    "url": "git@github.com:dchicchon/q5xts.git"
   },
-  "main": "q5.min.js"
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    "require": {
+      "types": "./dist/index.d.cts",
+      "default": "./dist/index.cjs"
+    },
+    "import": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "bin": "./dist/cli.js"
+,
+  "scripts": {
+    "start": "tsx ./src/q5.ts",
+    "prepare": "simple-git-hooks",
+    "build": "pkgroll",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "pkgroll": "^2.8.2",
+    "simple-git-hooks": "^2.11.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run type-check"
+  }
 }
