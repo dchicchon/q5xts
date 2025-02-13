@@ -13,29 +13,29 @@ class Drawing {
   }
 
   setupListeners() {
-    this.sketch.draw = () => {
-      this.draw();
-    };
     this.sketch.setup = () => {
       this.setup();
+    };
+    this.sketch.draw = () => {
+      this.draw();
     };
   }
 
   setup() {
-    console.log('setup method');
     this.sketch.frameRate(30);
     this.sketch.height = window.innerHeight;
     this.sketch.width = window.innerWidth;
   }
 
   draw() {
-    console.log('draw method');
+    this.sketch.background('rgb(30, 33, 34)');
     this.sketch.fill('white');
-    this.sketch.rect(50, 50, 100, 100);
+    this.sketch.rect(this.pos.x, 50, 20, 20);
+    this.pos.x += 1;
   }
 
   dispose() {
-    this.sketch.dispose()
+    this.sketch.dispose();
   }
 }
 
@@ -52,8 +52,6 @@ function App() {
       if (sketch) {
         sketch.dispose();
         setSketch(null);
-
-        
       }
     };
   }, []);

@@ -620,7 +620,7 @@ class Q5 {
       let intern = '_' + k + 'Fn';
       this[intern] = () => {};
       this[intern].isPlaceHolder = true;
-      console.log({ intern, k });
+      // console.log({ intern, k });
       if (this[k]) {
         this[intern] = this[k];
       } else {
@@ -1263,7 +1263,7 @@ class Q5 {
     this.ctx.clearRect(0, 0, this.width, this.height);
   }
 
-  background() {
+  background(...args) {
     if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
       return this.image(arguments[0], 0, 0, this.width, this.height);
     }
@@ -2367,9 +2367,9 @@ class Q5 {
   _draw() {
     if (!this._noLoop) {
       if (!this._frameRate) {
-        this.looper = requestAnimationFrame(() => this._draw);
+        this.looper = requestAnimationFrame(() => this._draw());
       } else {
-        this.looper = setTimeout(() => this._draw, 1000 / this._frameRate);
+        this.looper = setTimeout(() => this._draw(), 1000 / this._frameRate);
       }
     }
     this.clearBuff();
