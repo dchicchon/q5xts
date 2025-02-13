@@ -160,7 +160,7 @@ class Q5 {
   _noLoop: boolean;
   _pixelDensity: number;
   _frameRate: number;
-  _tint: any;
+  _tint: Color | null;
 
   private looper: any;
   private firstVertex: boolean;
@@ -1095,6 +1095,7 @@ class Q5 {
     this._style.colorMode = mode;
   }
 
+  // TODO: Likely HSV calculations may be wrong. tofix
   color(r: Color | number, g: number, b: number, a: number): Color | null {
     if (arguments.length === 1 && r instanceof Color) {
       return r;
@@ -1112,17 +1113,17 @@ class Q5 {
       }
     } else {
       if (arguments.length == 1) {
-        const vals = Color.hsv2rgb(0, 0, r / 100);
-        return new Color(...vals);
+        const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
+        return new Color(newR, newG, newB, 1);
       } else if (arguments.length === 2) {
-        const vals = Color.hsv2rgb(0, 0, r / 100);
-        return new Color(...vals);
+        const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
+        return new Color(newR, newG, newB, g / 255);
       } else if (arguments.length === 3) {
-        const vals = Color.hsv2rgb(r, g / 100, b / 100);
-        return new Color(...vals);
+        const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
+        return new Color(newR, newG, newB, 1);
       } else if (arguments.length === 4) {
-        const vals = Color.hsv2rgb(r, g / 100, b / 100);
-        return new Color(...vals);
+        const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
+        return new Color(newR, newG, newB, a / 255);
       }
     }
     return null;
@@ -1180,14 +1181,17 @@ class Q5 {
     this.ctx!.lineWidth = n;
   }
 
-  stroke(...args) {
+  stroke(...args: Array<any>) {
     this._style.noStroke = false;
     if (typeof args[0] == 'string') {
       this.ctx!.strokeStyle = args[0];
       return;
     }
-    const col = this.color(...args);
-    if (col._a <= 0) {
+
+    const [r, g, b, a] = args;
+    if (typeof g !== 'number' || typeof b !== 'number' || typeof a !== 'number') return;
+    const col = this.color(r, g, b, a);
+    if (col!._a <= 0) {
       this._style.noStroke = true;
       return;
     }
@@ -1198,14 +1202,15 @@ class Q5 {
     this._style.noStroke = true;
   }
 
-  fill(...args) {
+  fill(...args: Array<any>) {
     this._style.noFill = false;
     if (typeof args[0] == 'string') {
       this.ctx!.fillStyle = args[0];
       return;
     }
-    const col = this.color(...args);
-    if (col._a <= 0) {
+    const [r, g, b, a] = args;
+    const col = this.color(r, g, b, a);
+    if (col!._a <= 0) {
       this._style.noFill = true;
       return;
     }
@@ -1265,7 +1270,7 @@ class Q5 {
     this.ctx!.clearRect(0, 0, this.width, this.height);
   }
 
-  background(...args) {
+  background(...args: Array<any>) {
     if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
       return this.image(arguments[0], 0, 0, this.width, this.height);
     }
@@ -1275,7 +1280,8 @@ class Q5 {
     if (typeof arguments[0] == 'string') {
       this.ctx!.fillStyle = args[0];
     } else {
-      this.ctx!.fillStyle = this.color(...args);
+      const [r, g, b, a] = args;
+      this.ctx!.fillStyle = this.color(r, g, b, a);
     }
     this.ctx!.fillRect(0, 0, this.width, this.height);
     this.ctx!.restore();
@@ -1386,7 +1392,8 @@ class Q5 {
     if (!this._style.noStroke) this.ctx!.stroke();
   }
 
-  ellipse(x, y, w, h) {
+  // TODO: TOFIX
+  ellipse(x: number, y: number, w: number, h?: number) {
     if (h == undefined) {
       h = w;
     }
@@ -1460,6 +1467,7 @@ class Q5 {
     if (!this._style.noStroke) this.ctx!.stroke();
   }
 
+  // TODO: TOFIX
   rect(
     x: number,
     y: number,
@@ -1997,11 +2005,11 @@ class Q5 {
       w * this._pixelDensity,
       h * this._pixelDensity
     );
-    g.canvas.getContext('2d').putImageData(imgData, 0, 0);
+    g.canvas.getContext('2d')?.putImageData(imgData, 0, 0);
     return g;
   }
 
-  set(x: number, y: number, c) {
+  set(x: number, y: number, c: Color) {
     if (c.MAGIC == this.MAGIC) {
       let old = this._tint;
       this._tint = null;
@@ -2017,10 +2025,11 @@ class Q5 {
     this.pixels[idx + 3] = c._a * 255;
   }
 
-  tinted(...args) {
-    let col = this.color(...args);
-    let alpha = col._a;
-    col._a = 1;
+  tinted(...args: Array<any>) {
+    const [r, g, b, a] = args;
+    let col = this.color(r, g, b, a);
+    let alpha = col?._a;
+    col!._a = 1;
     this.makeTmpCtx();
     this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
     this.tmpCtx.fillStyle = col;
@@ -2049,8 +2058,9 @@ class Q5 {
     this.ctx!.restore();
   }
 
-  tint() {
-    this._tint = this.color(...arguments);
+  tint(...args: Array<any>) {
+    const [r, g, b, a] = args;
+    this._tint = this.color(r, g, b, a);
   }
 
   noTint() {
@@ -2092,20 +2102,23 @@ class Q5 {
     document.body.removeChild(down);
   }
 
-  saveCanvas(a, b?, c?) {
-    // TODO: Figure out better methodology of checking type?
-    if (a.MAGIC == this.MAGIC) {
-      if (c) {
-        a.save(b, c);
+  saveCanvas(sketch: Q5 | string, fileName?: string, ext?: string): void {
+    if (sketch instanceof Q5) {
+      if (fileName && ext) {
+        fileName && ext && sketch.save(fileName, ext);
+        return;
+      } else if (fileName) {
+        let newExt = fileName.split('.');
+        sketch.save(newExt.slice(0, -1).join('.'), newExt[newExt.length - 1]);
+        return;
       }
-      let s = b.split('.');
-      return a.save(s.slice(0, -1).join('.'), s[s.length - 1]);
     }
-    if (b) {
-      return this.save(a, b);
+    if (typeof sketch !== 'string') return;
+    if (fileName) {
+      return this.save(sketch, fileName);
     }
-    let s = a.split('.');
-    return this.save(s.slice(0, -1).join('.'), s[s.length - 1]);
+    let s = sketch.split('.');
+    this.save(s.slice(0, -1).join('.'), s[s.length - 1]);
   }
 
   //================================================================
@@ -2348,16 +2361,16 @@ class Q5 {
   //================================================================
 
   // TODO: fix this
-  createCapture(x) {
+  createCapture(x: MediaStreamConstraints) {
     var vid = document.createElement('video');
-    vid.playsinline = 'playsinline';
-    vid.autoplay = 'autoplay';
+    vid.playsInline = true;
+    vid.autoplay = true;
     navigator.mediaDevices.getUserMedia(x).then(function (stream) {
       vid.srcObject = stream;
     });
     vid.style.position = 'absolute';
-    vid.style.opacity = 0.00001;
-    vid.style.zIndex = -1000;
+    vid.style.opacity = '0.1';
+    vid.style.zIndex = '1';
     document.body.appendChild(vid);
     return vid;
   }
@@ -2429,11 +2442,7 @@ class Q5 {
   }
 
   isTouchUnaware() {
-    return (
-      this.touchStarted &&
-      this._touchMovedFn.isPlaceHolder &&
-      this._touchEndedFn.isPlaceHolder
-    );
+    return this.touchStarted && this.touchMoved && this.touchEnded;
   }
 
   requestSensorPermissions() {
