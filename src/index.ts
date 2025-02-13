@@ -1,6 +1,9 @@
 import { Vector } from './Vector';
 import { Color } from './Color';
 import { Lcg, Shr3, Ziggurat } from './Random';
+import { MULT, ROTY, ROTX, TRFM } from './helpers';
+// 3d transformation helpers
+
 interface StyleType {
   colorMode: number;
   noStroke: boolean;
@@ -204,6 +207,22 @@ class Q5 {
   parent: HTMLElement | Window;
 
   hasSensorPermission: boolean;
+
+  // setup functions
+  draw: Function | null;
+  setup: Function | null;
+  preload: Function | null;
+  mouseDragged: Function | null;
+  mouseMoved: Function | null;
+  mouseReleased: Function | null;
+  mousePressed: Function | null;
+  mouseClicked: Function | null;
+  keyPressed: Function | null;
+  keyTyped: Function | null;
+  keyReleased: Function | null;
+  touchStarted: Function | null;
+  touchMoved: Function | null;
+  touchEnded: Function | null;
 
   constructor(scope: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     this.canvas = document.createElement('canvas');
@@ -463,7 +482,7 @@ class Q5 {
     // this.filterImpl[this.DILATE] = (data: Array<number>) => {
     //   this.makeTmpBuf();
     //   this.tmpBuf.set(data);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
     //   for (let i = 0; i < h; i++) {
     //     for (let j = 0; j < w; j++) {
     //       let l = 4 * Math.max(j - 1, 0);
@@ -491,7 +510,7 @@ class Q5 {
     // this.filterImpl[this.ERODE] = (data: Array<number>) => {
     //   this.makeTmpBuf();
     //   this.tmpBuf.set(data);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
     //   for (let i = 0; i < h; i++) {
     //     for (let j = 0; j < w; j++) {
     //       let l = 4 * Math.max(j - 1, 0);
@@ -537,7 +556,7 @@ class Q5 {
     //   }
 
     //   let kern = gauss1d(ksize);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
     //   for (let i = 0; i < h; i++) {
     //     for (let j = 0; j < w; j++) {
     //       let s0 = 0,
@@ -600,6 +619,21 @@ class Q5 {
 
     this.ziggurat = new Ziggurat(this.rng1);
 
+    this.draw = null;
+    this.setup = null;
+    this.preload = null;
+    this.mouseDragged = null;
+    this.mouseMoved = null;
+    this.mouseReleased = null;
+    this.mousePressed = null;
+    this.mouseClicked = null;
+    this.keyPressed = null;
+    this.keyTyped = null;
+    this.keyReleased = null;
+    this.touchStarted = null;
+    this.touchMoved = null;
+    this.touchEnded = null;
+
     this.eventNames = [
       'setup',
       'draw',
@@ -622,23 +656,23 @@ class Q5 {
     // })
 
     // this is how all the methods are set
-    for (let k of this.eventNames) {
-      let intern = '_' + k + 'Fn';
-      this[intern] = () => {};
-      this[intern].isPlaceHolder = true;
-      if (this[k]) {
-        this[intern] = this[k];
-      } else {
-        Object.defineProperty(this, k, {
-          set: function (fun) {
-            this[intern] = fun;
-          },
-        });
-      }
-    }
+    // for (let k of this.eventNames) {
+    //   let intern = '_' + k + 'Fn';
+    //   this[intern] = () => {};
+    //   this[intern].isPlaceHolder = true;
+    //   if (this[k]) {
+    //     this[intern] = this[k];
+    //   } else {
+    //     Object.defineProperty(this, k, {
+    //       set: function (fun) {
+    //         this[intern] = fun;
+    //       },
+    //     });
+    //   }
+    // }
 
     setTimeout(() => {
-      this._preloadFn();
+      this.preload && this.preload();
       this.millisStart = window.performance.now();
       this._start();
     }, 1);
@@ -650,9 +684,9 @@ class Q5 {
       this.mouseY = event.offsetY;
 
       if (this.mouseIsPressed) {
-        this._mouseDraggedFn(event);
+        this.mouseDragged && this.mouseDragged(event);
       } else {
-        this._mouseMovedFn(event);
+        this.mouseMoved && this.mouseMoved(event);
       }
     };
     this.canvas.onmousedown = (event) => {
@@ -662,7 +696,7 @@ class Q5 {
       this.mouseY = event.offsetY;
       this.mouseIsPressed = true;
       this.mouseButton = [this.LEFT, this.CENTER, this.RIGHT][event.button];
-      this._mousePressedFn(event);
+      this.mousePressed && this.mousePressed(event);
     };
     this.canvas.onmouseup = (event) => {
       this.pmouseX = this.mouseX;
@@ -670,7 +704,7 @@ class Q5 {
       this.mouseX = event.offsetX;
       this.mouseY = event.offsetY;
       this.mouseIsPressed = false;
-      this._mouseReleasedFn(event);
+      this.mouseReleased && this.mouseReleased(event);
     };
     this.canvas.onclick = (event) => {
       this.pmouseX = this.mouseX;
@@ -678,7 +712,7 @@ class Q5 {
       this.mouseX = event.offsetX;
       this.mouseY = event.offsetY;
       this.mouseIsPressed = true;
-      this._mouseClickedFn(event);
+      this.mouseClicked && this.mouseClicked(event);
       this.mouseIsPressed = false;
     };
     window.addEventListener('keydown', (event) => {
@@ -686,9 +720,9 @@ class Q5 {
       this.key = event.key;
       this.keyCode = event.keyCode;
       this.keysHeld[this.keyCode] = true;
-      this.keyPressed(event);
+      this.keyPressed && this.keyPressed(event);
       if (event.key.length == 1) {
-        this._keyTypedFn(event);
+        this.keyTyped && this.keyTyped(event);
       }
     });
     window.addEventListener('keyup', (event) => {
@@ -696,12 +730,11 @@ class Q5 {
       this.key = event.key;
       this.keyCode = event.keyCode;
       this.keysHeld[this.keyCode] = false;
-      this._keyReleasedFn(event);
+      this.keyReleased && this.keyReleased(event);
     });
 
     this.canvas.ontouchstart = (event) => {
       // this.touches = this.getTouchInfo()
-
       // based on the length we'll go down the list?
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches.item(i);
@@ -714,11 +747,11 @@ class Q5 {
         this.mouseY = this.touches[0].y;
         this.mouseIsPressed = true;
         this.mouseButton = this.LEFT;
-        if (!this._mousePressedFn(event)) {
+        if (!this.mousePressed) {
           event.preventDefault();
         }
       }
-      if (!this._touchStartedFn(event)) {
+      if (!this.touchStarted) {
         event.preventDefault();
       }
     };
@@ -734,11 +767,11 @@ class Q5 {
         this.mouseY = this.touches[0].y;
         this.mouseIsPressed = true;
         this.mouseButton = this.LEFT;
-        if (!this._mouseDraggedFn(event)) {
+        if (!this.mouseDragged) {
           event.preventDefault();
         }
       }
-      if (!this._touchMovedFn(event)) {
+      if (!this.touchMoved) {
         event.preventDefault();
       }
     };
@@ -754,11 +787,11 @@ class Q5 {
         this.mouseX = this.touches[0].x;
         this.mouseY = this.touches[0].y;
         this.mouseIsPressed = false;
-        if (!this._mouseReleasedFn(event)) {
+        if (!this.mouseReleased) {
           event.preventDefault();
         }
       }
-      if (!this._touchEndedFn(event)) {
+      if (!this.touchEnded) {
         event.preventDefault();
       }
     };
@@ -771,71 +804,7 @@ class Q5 {
     // SENSORS
     //================================================================
 
-    // 3d transformation helpers
-    let ROTX = (a: number) => [
-      1,
-      0,
-      0,
-      0,
-      0,
-      Math.cos(a),
-      -Math.sin(a),
-      0,
-      0,
-      Math.sin(a),
-      Math.cos(a),
-      0,
-      0,
-      0,
-      0,
-      1,
-    ];
-    let ROTY = (a: number) => [
-      Math.cos(a),
-      0,
-      Math.sin(a),
-      0,
-      0,
-      1,
-      0,
-      0,
-      -Math.sin(a),
-      0,
-      Math.cos(a),
-      0,
-      0,
-      0,
-      0,
-      1,
-    ];
-    let MULT = (A, B) => [
-      A[0] * B[0] + A[1] * B[4] + A[2] * B[8] + A[3] * B[12],
-      A[0] * B[1] + A[1] * B[5] + A[2] * B[9] + A[3] * B[13],
-      A[0] * B[2] + A[1] * B[6] + A[2] * B[10] + A[3] * B[14],
-      A[0] * B[3] + A[1] * B[7] + A[2] * B[11] + A[3] * B[15],
-      A[4] * B[0] + A[5] * B[4] + A[6] * B[8] + A[7] * B[12],
-      A[4] * B[1] + A[5] * B[5] + A[6] * B[9] + A[7] * B[13],
-      A[4] * B[2] + A[5] * B[6] + A[6] * B[10] + A[7] * B[14],
-      A[4] * B[3] + A[5] * B[7] + A[6] * B[11] + A[7] * B[15],
-      A[8] * B[0] + A[9] * B[4] + A[10] * B[8] + A[11] * B[12],
-      A[8] * B[1] + A[9] * B[5] + A[10] * B[9] + A[11] * B[13],
-      A[8] * B[2] + A[9] * B[6] + A[10] * B[10] + A[11] * B[14],
-      A[8] * B[3] + A[9] * B[7] + A[10] * B[11] + A[11] * B[15],
-      A[12] * B[0] + A[13] * B[4] + A[14] * B[8] + A[15] * B[12],
-      A[12] * B[1] + A[13] * B[5] + A[14] * B[9] + A[15] * B[13],
-      A[12] * B[2] + A[13] * B[6] + A[14] * B[10] + A[15] * B[14],
-      A[12] * B[3] + A[13] * B[7] + A[14] * B[11] + A[15] * B[15],
-    ];
-    let TRFM = (A, v) => [
-      (A[0] * v[0] + A[1] * v[1] + A[2] * v[2] + A[3]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-      (A[4] * v[0] + A[5] * v[1] + A[6] * v[2] + A[7]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-      (A[8] * v[0] + A[9] * v[1] + A[10] * v[2] + A[11]) /
-        (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
-    ];
-
-    window.ondeviceorientation = (event) => {
+    window.ondeviceorientation = (event: DeviceOrientationEvent) => {
       this.pRotationX = this.rotationX;
       this.pRotationY = this.rotationY;
       this.pRotationZ = this.rotationZ;
@@ -843,9 +812,15 @@ class Q5 {
       this.pRelRotationY = this.relRotationY;
       this.pRelRotationZ = this.relRotationZ;
 
-      this.rotationX = event.beta * (Math.PI / 180.0);
-      this.rotationY = event.gamma * (Math.PI / 180.0);
-      this.rotationZ = event.alpha * (Math.PI / 180.0);
+      if (event.beta) {
+        this.rotationX = event.beta * (Math.PI / 180.0);
+      }
+      if (event.gamma) {
+        this.rotationY = event.gamma * (Math.PI / 180.0);
+      }
+      if (event.alpha) {
+        this.rotationZ = event.alpha * (Math.PI / 180.0);
+      }
       this.relRotationX = [-this.rotationY, -this.rotationX, this.rotationY][
         ~~(window.orientation / 90) + 1
       ];
@@ -867,9 +842,15 @@ class Q5 {
           MULT(ROTY(this.rotationY), ROTX(this.rotationX)),
           [0, 0, -9.80665]
         );
-        this.accelerationX = event.accelerationIncludingGravity.x + grav[0];
-        this.accelerationY = event.accelerationIncludingGravity.y + grav[1];
-        this.accelerationZ = event.accelerationIncludingGravity.z - grav[2];
+        if (event.accelerationIncludingGravity?.x) {
+          this.accelerationX = event.accelerationIncludingGravity.x + grav[0];
+        }
+        if (event.accelerationIncludingGravity?.y) {
+          this.accelerationY = event.accelerationIncludingGravity.y + grav[1];
+        }
+        if (event.accelerationIncludingGravity?.z) {
+          this.accelerationZ = event.accelerationIncludingGravity.z - grav[2];
+        }
       }
     };
   }
@@ -965,6 +946,8 @@ class Q5 {
     return this.ctx;
   }
 
+  // default functions to override
+  // SETUP
   dispose() {
     if (this.canvas && this.parent && this.parent instanceof HTMLElement) {
       console.log(this.canvas, this.parent);
@@ -1011,7 +994,7 @@ class Q5 {
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
 
-    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+    this.ctx?.scale(this._pixelDensity, this._pixelDensity);
     this.defaultStyle();
     return this._pixelDensity;
   }
@@ -1194,13 +1177,13 @@ class Q5 {
   }
   strokeWeight(n: number) {
     this._style.noStroke = false;
-    this.ctx.lineWidth = n;
+    this.ctx!.lineWidth = n;
   }
 
   stroke(...args) {
     this._style.noStroke = false;
     if (typeof args[0] == 'string') {
-      this.ctx.strokeStyle = args[0];
+      this.ctx!.strokeStyle = args[0];
       return;
     }
     const col = this.color(...args);
@@ -1208,7 +1191,7 @@ class Q5 {
       this._style.noStroke = true;
       return;
     }
-    this.ctx.strokeStyle = col;
+    this.ctx!.strokeStyle = col;
   }
 
   noStroke() {
@@ -1218,7 +1201,7 @@ class Q5 {
   fill(...args) {
     this._style.noFill = false;
     if (typeof args[0] == 'string') {
-      this.ctx.fillStyle = args[0];
+      this.ctx!.fillStyle = args[0];
       return;
     }
     const col = this.color(...args);
@@ -1226,7 +1209,7 @@ class Q5 {
       this._style.noFill = true;
       return;
     }
-    this.ctx.fillStyle = col;
+    this.ctx!.fillStyle = col;
   }
 
   noFill() {
@@ -1234,15 +1217,15 @@ class Q5 {
   }
 
   blendMode(x: GlobalCompositeOperation) {
-    this.ctx.globalCompositeOperation = x;
+    this.ctx!.globalCompositeOperation = x;
   }
 
   strokeCap(x: CanvasLineCap) {
-    this.ctx.lineCap = x;
+    this.ctx!.lineCap = x;
   }
 
   strokeJoin(x: CanvasLineJoin) {
-    this.ctx.lineJoin = x;
+    this.ctx!.lineJoin = x;
   }
 
   ellipseMode(x: string) {
@@ -1268,10 +1251,10 @@ class Q5 {
   }
 
   defaultStyle() {
-    this.ctx.fillStyle = 'white';
-    this.ctx.strokeStyle = 'black';
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'miter';
+    this.ctx!.fillStyle = 'white';
+    this.ctx!.strokeStyle = 'black';
+    this.ctx!.lineCap = 'round';
+    this.ctx!.lineJoin = 'miter';
   }
 
   //================================================================
@@ -1279,33 +1262,31 @@ class Q5 {
   //================================================================
 
   clear() {
-    if (!this.ctx) return;
-    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.ctx!.clearRect(0, 0, this.width, this.height);
   }
 
   background(...args) {
     if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
       return this.image(arguments[0], 0, 0, this.width, this.height);
     }
-    if (!this.ctx) return;
-    this.ctx.save();
-    this.ctx.resetTransform();
-    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    this.ctx!.scale(this._pixelDensity, this._pixelDensity);
     if (typeof arguments[0] == 'string') {
-      this.ctx.fillStyle = arguments[0];
+      this.ctx!.fillStyle = args[0];
     } else {
-      this.ctx.fillStyle = this.color(...arguments);
+      this.ctx!.fillStyle = this.color(...args);
     }
-    this.ctx.fillRect(0, 0, this.width, this.height);
-    this.ctx.restore();
+    this.ctx!.fillRect(0, 0, this.width, this.height);
+    this.ctx!.restore();
   }
 
   line(x0: number, y0: number, x1: number, y1: number) {
-    if (!this._style.noStroke && this.ctx) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(x0, y0);
-      this.ctx.lineTo(x1, y1);
-      this.ctx.stroke();
+    if (!this._style.noStroke) {
+      this.ctx!.beginPath();
+      this.ctx!.moveTo(x0, y0);
+      this.ctx!.lineTo(x1, y1);
+      this.ctx!.stroke();
     }
   }
 
@@ -1347,22 +1328,22 @@ class Q5 {
     }
     let lo = Q5.norm2PI(start);
     let hi = Q5.norm2PI(stop);
-    this.ctx.beginPath();
+    this.ctx!.beginPath();
     for (let i = 0; i < detail + 1; i++) {
       let t = i / detail;
       let a = this.lerp(lo, hi, t);
       let dx = (Math.cos(a) * w) / 2;
       let dy = (Math.sin(a) * h) / 2;
-      this.ctx[i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
+      this.ctx![i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
     }
     if (mode == this.CHORD) {
-      this.ctx.closePath();
+      this.ctx!.closePath();
     } else if (mode == this.PIE) {
-      this.ctx.lineTo(x, y);
-      this.ctx.closePath();
+      this.ctx!.lineTo(x, y);
+      this.ctx!.closePath();
     }
-    if (!this._style.noFill) this.ctx.fill();
-    if (!this._style.noStroke) this.ctx.stroke();
+    if (!this._style.noFill) this.ctx!.fill();
+    if (!this._style.noStroke) this.ctx!.stroke();
   }
 
   arc(
@@ -1399,10 +1380,10 @@ class Q5 {
     if (this._style.noFill && this._style.noStroke) {
       return;
     }
-    this.ctx.beginPath();
-    this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
-    if (!this._style.noFill) this.ctx.fill();
-    if (!this._style.noStroke) this.ctx.stroke();
+    this.ctx!.beginPath();
+    this.ctx!.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+    if (!this._style.noFill) this.ctx!.fill();
+    if (!this._style.noStroke) this.ctx!.stroke();
   }
 
   ellipse(x, y, w, h) {
@@ -1430,17 +1411,17 @@ class Q5 {
       x = x.x;
     }
     if (!y) return;
-    this.ctx.beginPath();
-    this.ctx.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
-    this.ctx.stroke();
+    this.ctx!.beginPath();
+    this.ctx!.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
+    this.ctx!.stroke();
   }
 
   rectImpl(x: number, y: number, w: number, h: number): void {
     if (!this._style.noFill) {
-      this.ctx.fillRect(x, y, w, h);
+      this.ctx!.fillRect(x, y, w, h);
     }
     if (!this._style.noStroke) {
-      this.ctx.strokeRect(x, y, w, h);
+      this.ctx!.strokeRect(x, y, w, h);
     }
   }
 
@@ -1466,17 +1447,17 @@ class Q5 {
     const hh = Math.min(Math.abs(h), Math.abs(w)) / 2;
     tl = Math.min(hh, tl);
     tr = Math.min(hh, tr);
-    bl = Math.min(hh, bl);
-    br = Math.min(hh, br);
-    this.ctx.beginPath();
-    this.ctx.moveTo(x + tl, y);
-    this.ctx.arcTo(x + w, y, x + w, y + h, tr);
-    this.ctx.arcTo(x + w, y + h, x, y + h, br);
-    this.ctx.arcTo(x, y + h, x, y, bl);
-    this.ctx.arcTo(x, y, x + w, y, tl);
-    this.ctx.closePath();
-    if (!this._style.noFill) this.ctx.fill();
-    if (!this._style.noStroke) this.ctx.stroke();
+    bl = Math.min(hh, bl!);
+    br = Math.min(hh, br!);
+    this.ctx!.beginPath();
+    this.ctx!.moveTo(x + tl, y);
+    this.ctx!.arcTo(x + w, y, x + w, y + h, tr);
+    this.ctx!.arcTo(x + w, y + h, x, y + h, br);
+    this.ctx!.arcTo(x, y + h, x, y, bl);
+    this.ctx!.arcTo(x, y, x + w, y, tl);
+    this.ctx!.closePath();
+    if (!this._style.noFill) this.ctx!.fill();
+    if (!this._style.noStroke) this.ctx!.stroke();
   }
 
   rect(
@@ -1518,11 +1499,11 @@ class Q5 {
 
   beginShape() {
     this.clearBuff();
-    this.ctx.beginPath();
+    this.ctx!.beginPath();
     this.firstVertex = true;
   }
   beginContour() {
-    this.ctx.closePath();
+    this.ctx!.closePath();
     this.clearBuff();
     this.firstVertex = true;
   }
@@ -1533,9 +1514,9 @@ class Q5 {
   vertex(x: number, y: number) {
     this.clearBuff();
     if (this.firstVertex) {
-      this.ctx.moveTo(x, y);
+      this.ctx!.moveTo(x, y);
     } else {
-      this.ctx.lineTo(x, y);
+      this.ctx!.lineTo(x, y);
     }
     this.firstVertex = false;
   }
@@ -1549,12 +1530,12 @@ class Q5 {
     y: number
   ) {
     this.clearBuff();
-    this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+    this.ctx!.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
   }
 
   quadraticVertex(cp1x: number, cp1y: number, x: number, y: number) {
     this.clearBuff();
-    this.ctx.quadraticCurveTo(cp1x, cp1y, x, y);
+    this.ctx!.quadraticCurveTo(cp1x, cp1y, x, y);
   }
 
   bezier(
@@ -1602,16 +1583,16 @@ class Q5 {
   endShape(close?: number) {
     this.clearBuff();
     if (close) {
-      this.ctx.closePath();
+      this.ctx!.closePath();
     }
-    if (!this._style.noFill) this.ctx.fill();
-    if (!this._style.noStroke) this.ctx.stroke();
+    if (!this._style.noFill) this.ctx!.fill();
+    if (!this._style.noStroke) this.ctx!.stroke();
     if (this._style.noFill && this._style.noStroke) {
       // eh.
-      this.ctx.save();
-      this.ctx.fillStyle = 'none';
-      this.ctx.fill();
-      this.ctx.restore();
+      this.ctx!.save();
+      this.ctx!.fillStyle = 'none';
+      this.ctx!.fill();
+      this.ctx!.restore();
     }
   }
 
@@ -1712,9 +1693,9 @@ class Q5 {
     );
     for (let i = 0; i < pts.length; i++) {
       if (this.firstVertex) {
-        this.ctx.moveTo(...pts[i]);
+        this.ctx!.moveTo(...pts[i]);
       } else {
-        this.ctx.lineTo(...pts[i]);
+        this.ctx!.lineTo(...pts[i]);
       }
       this.firstVertex = false;
     }
@@ -1742,49 +1723,49 @@ class Q5 {
   // DRAWING MATRIX
   //================================================================
   translate(x: number, y: number) {
-    this.ctx.translate(x, y);
+    this.ctx!.translate(x, y);
   }
   rotate(r: number) {
-    this.ctx.rotate(r);
+    this.ctx!.rotate(r);
   }
   scale(x: number, y?: number) {
     if (y == undefined) {
       y = x;
     }
-    this.ctx.scale(x, y);
+    this.ctx!.scale(x, y);
   }
   applyMatrix(a: number, b: number, c: number, d: number, e: number, f: number) {
-    this.ctx.transform(a, b, c, d, e, f);
+    this.ctx!.transform(a, b, c, d, e, f);
   }
   shearX(ang: number) {
-    this.ctx.transform(1, 0, Math.tan(ang), 1, 0, 0);
+    this.ctx!.transform(1, 0, Math.tan(ang), 1, 0, 0);
   }
   shearY(ang: number) {
-    this.ctx.transform(1, Math.tan(ang), 0, 1, 0, 0);
+    this.ctx!.transform(1, Math.tan(ang), 0, 1, 0, 0);
   }
 
   resetMatrix() {
-    this.ctx.resetTransform();
-    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+    this.ctx!.resetTransform();
+    this.ctx!.scale(this._pixelDensity, this._pixelDensity);
   }
 
   pushMatrix() {
     this._styleCache.push({ ...this._style });
     this._style = this._styleCache[this._styleCache.length - 1];
-    this.ctx.save();
+    this.ctx!.save();
   }
 
   push() {
     this._styleCache.push({ ...this._style });
     this._style = this._styleCache[this._styleCache.length - 1];
-    this.ctx.save();
+    this.ctx!.save();
   }
 
   popMatrix() {
     if (this._styleCache.length - 1) {
       this._styleCache.pop();
       this._style = this._styleCache[this._styleCache.length - 1];
-      this.ctx.restore();
+      this.ctx!.restore();
     }
   }
 
@@ -1792,7 +1773,7 @@ class Q5 {
     if (this._styleCache.length - 1) {
       this._styleCache.pop();
       this._style = this._styleCache[this._styleCache.length - 1];
-      this.ctx.restore();
+      this.ctx!.restore();
     }
   }
 
@@ -1830,15 +1811,15 @@ class Q5 {
     }
     if (!dWidth) {
       if (img.MAGIC == this.MAGIC || img.width) {
-        this.ctx.drawImage(drawable, dx, dy, img.width, img.height);
+        this.ctx!.drawImage(drawable, dx, dy, img.width, img.height);
       } else {
-        this.ctx.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
+        this.ctx!.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
       }
       reset();
       return;
     }
     if (!sx && dHeight) {
-      this.ctx.drawImage(drawable, dx, dy, dWidth, dHeight);
+      this.ctx!.drawImage(drawable, dx, dy, dWidth, dHeight);
       reset();
       return;
     }
@@ -1849,18 +1830,18 @@ class Q5 {
       sHeight = drawable.height;
     }
     if (!sx || !sy || !sWidth || !sHeight || !dHeight) return;
-    this.ctx.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+    this.ctx!.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
     reset();
   }
 
   loadPixels() {
-    this.imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    this.imgData = this.ctx!.getImageData(0, 0, this.canvas.width, this.canvas.height);
     this.pixels = this.imgData.data;
   }
 
   updatePixels() {
     if (this.imgData != null) {
-      this.ctx.putImageData(this.imgData, 0, 0);
+      this.ctx!.putImageData(this.imgData, 0, 0);
     }
   }
 
@@ -1887,7 +1868,7 @@ class Q5 {
   }
 
   makeTmpBuf() {
-    let l = this.ctx.canvas.width * this.ctx.canvas.height * 4;
+    let l = this.ctx!.canvas.width * this.ctx!.canvas.height * 4;
     if (this.tmpBuf == null || l != this.tmpBuf.length) {
       this.tmpBuf = new Uint8ClampedArray(l);
     }
@@ -1898,8 +1879,8 @@ class Q5 {
       // document.body.appendChild(tmpCtx.canvas)
     }
     if (w == undefined) {
-      w = this.ctx.canvas.width;
-      h = this.ctx.canvas.height;
+      w = this.ctx!.canvas.width;
+      h = this.ctx!.canvas.height;
     }
     if (this.tmpCtx.canvas.width != w || this.tmpCtx.canvas.height != h) {
       this.tmpCtx.canvas.width = w;
@@ -1912,8 +1893,8 @@ class Q5 {
       // document.body.appendChild(this.tmpCt2.canvas)
     }
     if (w == undefined) {
-      w = this.ctx.canvas.width;
-      h = this.ctx.canvas.height;
+      w = this.ctx!.canvas.width;
+      h = this.ctx!.canvas.height;
     }
     if (this.tmpCt2.canvas.width != w || this.tmpCt2.canvas.height != h) {
       this.tmpCt2.canvas.width = w;
@@ -1924,16 +1905,16 @@ class Q5 {
   nativeFilter(filtstr: string) {
     this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
     this.tmpCtx.filter = filtstr;
-    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
-    this.ctx.save();
-    this.ctx.resetTransform();
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx.restore();
+    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
+    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx!.restore();
   }
 
   // filter(typ: number, x: number) {
-  //   let support = this.HARDWARE_FILTERS && this.ctx.filter != undefined;
+  //   let support = this.HARDWARE_FILTERS && this.ctx!.filter != undefined;
   //   if (support) {
   //     this.makeTmpCtx();
   //     if (typ == this.THRESHOLD) {
@@ -1949,59 +1930,59 @@ class Q5 {
   //       this.tmpCtx.fillStyle = 'black';
   //       this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
   //       this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
-  //       this.ctx.save();
-  //       this.ctx.resetTransform();
-  //       this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
-  //       this.ctx.restore();
+  //       this.ctx!.save();
+  //       this.ctx!.resetTransform();
+  //       this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+  //       this.ctx!.restore();
   //     } else if (typ == this.INVERT) {
   //       this.nativeFilter(`invert(100%)`);
   //     } else if (typ == this.BLUR) {
   //       this.nativeFilter(`blur${Math.ceil((x * this._pixelDensity) / 1) || 1}px)`);
   //     } else {
-  //       let imgData = this.ctx.getImageData(
+  //       let imgData = this.ctx!.getImageData(
   //         0,
   //         0,
-  //         this.ctx.canvas.width,
-  //         this.ctx.canvas.height
+  //         this.ctx!.canvas.width,
+  //         this.ctx!.canvas.height
   //       );
   //       this.filterImpl[typ](imgData.data, x);
-  //       this.ctx.putImageData(imgData, 0, 0);
+  //       this.ctx!.putImageData(imgData, 0, 0);
   //     }
   //   } else {
-  //     let imgData = this.ctx.getImageData(
+  //     let imgData = this.ctx!.getImageData(
   //       0,
   //       0,
-  //       this.ctx.canvas.width,
-  //       this.ctx.canvas.height
+  //       this.ctx!.canvas.width,
+  //       this.ctx!.canvas.height
   //     );
   //     this.filterImpl[typ](imgData.data, x);
-  //     this.ctx.putImageData(imgData, 0, 0);
+  //     this.ctx!.putImageData(imgData, 0, 0);
   //   }
   // }
 
   resize(w: number, h: number) {
     this.makeTmpCtx();
-    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
     this.width = w;
     this.height = h;
-    this.ctx.canvas.width = w * this._pixelDensity;
-    this.ctx.canvas.height = h * this._pixelDensity;
-    this.ctx.save();
-    this.ctx.resetTransform();
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    this.ctx.drawImage(
+    this.ctx!.canvas.width = w * this._pixelDensity;
+    this.ctx!.canvas.height = h * this._pixelDensity;
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
+    this.ctx!.drawImage(
       this.tmpCtx.canvas,
       0,
       0,
-      this.ctx.canvas.width,
-      this.ctx.canvas.height
+      this.ctx!.canvas.width,
+      this.ctx!.canvas.height
     );
-    this.ctx.restore();
+    this.ctx!.restore();
   }
 
   get(x: number, y: number, w?: number, h?: number) {
     if (x != undefined && w == undefined) {
-      let c = this.ctx.getImageData(x, y, 1, 1).data;
+      let c = this.ctx!.getImageData(x, y, 1, 1).data;
       return new Color(c[0], c[1], c[2], c[3] / 255);
     }
     x = x || 0;
@@ -2010,7 +1991,7 @@ class Q5 {
     h = h || this.height;
     let g = this.createGraphics(w, h);
     g.pixelDensity(this._pixelDensity);
-    let imgData = this.ctx.getImageData(
+    let imgData = this.ctx!.getImageData(
       x * this._pixelDensity,
       y * this._pixelDensity,
       w * this._pixelDensity,
@@ -2029,15 +2010,15 @@ class Q5 {
       return;
     }
     let idx =
-      4 * (y * this._pixelDensity * this.ctx.canvas.width + x * this._pixelDensity);
+      4 * (y * this._pixelDensity * this.ctx!.canvas.width + x * this._pixelDensity);
     this.pixels[idx] = c._r;
     this.pixels[idx + 1] = c._g;
     this.pixels[idx + 2] = c._b;
     this.pixels[idx + 3] = c._a * 255;
   }
 
-  tinted() {
-    let col = this.color(...arguments);
+  tinted(...args) {
+    let col = this.color(...args);
     let alpha = col._a;
     col._a = 1;
     this.makeTmpCtx();
@@ -2045,27 +2026,27 @@ class Q5 {
     this.tmpCtx.fillStyle = col;
     this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
     this.tmpCtx.globalCompositeOperation = 'multiply';
-    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
     this.tmpCtx.globalCompositeOperation = 'source-over';
 
-    this.ctx.save();
-    this.ctx.resetTransform();
-    let old = this.ctx.globalCompositeOperation;
-    this.ctx.globalCompositeOperation = 'source-in';
-    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx.globalCompositeOperation = old;
-    this.ctx.restore();
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    let old = this.ctx!.globalCompositeOperation;
+    this.ctx!.globalCompositeOperation = 'source-in';
+    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx!.globalCompositeOperation = old;
+    this.ctx!.restore();
 
     this.tmpCtx.globalAlpha = alpha;
     this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
     this.tmpCtx.globalAlpha = 1;
 
-    this.ctx.save();
-    this.ctx.resetTransform();
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx.restore();
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
+    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx!.restore();
   }
 
   tint() {
@@ -2077,13 +2058,13 @@ class Q5 {
   }
 
   mask(img: any) {
-    this.ctx.save();
-    this.ctx.resetTransform();
-    let old = this.ctx.globalCompositeOperation;
-    this.ctx.globalCompositeOperation = 'destination-in';
-    this.ctx.drawImage(img.canvas, 0, 0);
-    this.ctx.globalCompositeOperation = old;
-    this.ctx.restore();
+    this.ctx!.save();
+    this.ctx!.resetTransform();
+    let old = this.ctx!.globalCompositeOperation;
+    this.ctx!.globalCompositeOperation = 'destination-in';
+    this.ctx!.drawImage(img.canvas, 0, 0);
+    this.ctx!.globalCompositeOperation = old;
+    this.ctx!.restore();
   }
 
   clearTemporaryBuffers() {
@@ -2097,10 +2078,11 @@ class Q5 {
     ext = ext || 'png';
     var down = document.createElement('a');
     down.innerHTML = '[Download]';
+    const ctx = this.ctx;
     down.addEventListener(
       'click',
       function () {
-        this.href = this.ctx.canvas.toDataURL();
+        this.href = ctx!.canvas.toDataURL();
         this.download = name + '.' + ext;
       },
       false
@@ -2158,10 +2140,9 @@ class Q5 {
   }
 
   textAlign(horiz: CanvasTextAlign, vert?: CanvasTextBaseline) {
-    if (!this.ctx) return;
-    this.ctx.textAlign = horiz;
+    this.ctx!.textAlign = horiz;
     if (vert) {
-      this.ctx.textBaseline = vert == this.CENTER ? 'middle' : vert;
+      this.ctx!.textBaseline = vert == this.CENTER ? 'middle' : vert;
     }
   }
   text(str: string, x: number, y: number, w?: number) {
@@ -2172,31 +2153,31 @@ class Q5 {
     if (this._style.noFill && this._style.noStroke) {
       return;
     }
-    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
     let lines = str.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!this._style.noFill) {
-        this.ctx.fillText(lines[i], x, y, w);
+        this.ctx!.fillText(lines[i], x, y, w);
       }
       if (!this._style.noStroke) {
-        this.ctx.strokeText(lines[i], x, y, w);
+        this.ctx!.strokeText(lines[i], x, y, w);
       }
       y += this._style.textLeading;
     }
   }
 
   textWidth(str: string): number {
-    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx.measureText(str).width;
+    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx!.measureText(str).width;
   }
 
   textAscent(str: string): number {
-    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx.measureText(str).actualBoundingBoxAscent;
+    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx!.measureText(str).actualBoundingBoxAscent;
   }
   textDescent(str: string): number {
-    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx.measureText(str).actualBoundingBoxDescent;
+    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx!.measureText(str).actualBoundingBoxDescent;
   }
 
   //================================================================
@@ -2386,10 +2367,8 @@ class Q5 {
   //================================================================
 
   // FIX THIS
-  draw() {
-    console.log('pass');
-  }
-  _draw() {
+
+  private _draw() {
     if (!this._noLoop) {
       if (!this._frameRate) {
         this.looper = requestAnimationFrame(() => this._draw());
@@ -2400,7 +2379,7 @@ class Q5 {
     this.clearBuff();
     this.firstVertex = true;
     this.push();
-    this.draw();
+    this.draw && this.draw();
     this.pop();
     ++this.frameCount;
   }
@@ -2423,16 +2402,12 @@ class Q5 {
     this._frameRate = fps;
   }
 
-  setup() {
-    console.log('setup');
-  }
-
-  _start() {
+  private _start() {
     if (this.preloadCnt > 0) {
       return setTimeout(() => this._start(), 10);
     }
     // ctx.save();
-    this.setup();
+    this.setup && this.setup();
     // ctx.restore();
     this._draw();
   }
@@ -2455,7 +2430,7 @@ class Q5 {
 
   isTouchUnaware() {
     return (
-      this._touchStartedFn.isPlaceHolder &&
+      this.touchStarted &&
       this._touchMovedFn.isPlaceHolder &&
       this._touchEndedFn.isPlaceHolder
     );

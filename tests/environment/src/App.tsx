@@ -80,63 +80,66 @@ class Drawing extends Q5 {
     this.colors = createColors(10);
     this.balls = [];
     this.pause = false;
-  }
-
-  setup() {
-    this.frameRate(60);
-    this.resizeCanvas(window.innerWidth, window.innerHeight);
-    for (let i = 0; i < this.ballCount; i++) {
-      const ball = new Ball(this.width, this.height, this.colors[i % this.colors.length]);
-      this.balls.push(ball);
-    }
-  }
-  keyPressed(event: KeyboardEvent) {
-    if (event.code === 'Space') {
-      this.pause = !this.pause;
-    }
-  }
-  draw() {
-    this.background('rgb(30, 33, 34)');
-    this.balls.forEach((ball, i) => {
-      this.fill(ball.color);
-      this.circle(ball.position.x, ball.position.y, ball.diameter);
-      this.balls.forEach((secondBall, j) => {
-        if (i !== j) {
-          if (ball.inBounds(secondBall)) {
-            ball.collide(secondBall);
-            secondBall.collide(ball);
+    this.setup = () => {
+      this.frameRate(60);
+      this.resizeCanvas(window.innerWidth, window.innerHeight);
+      for (let i = 0; i < this.ballCount; i++) {
+        const ball = new Ball(
+          this.width,
+          this.height,
+          this.colors[i % this.colors.length]
+        );
+        this.balls.push(ball);
+      }
+    };
+    this.draw = () => {
+      this.background('rgb(30, 33, 34)');
+      this.balls.forEach((ball, i) => {
+        this.fill(ball.color);
+        this.circle(ball.position.x, ball.position.y, ball.diameter);
+        this.balls.forEach((secondBall, j) => {
+          if (i !== j) {
+            if (ball.inBounds(secondBall)) {
+              ball.collide(secondBall);
+              secondBall.collide(ball);
+            }
           }
+        });
+        if (!this.inXBounds(ball)) {
+          ball.direction.mult(-1, ball.direction.y);
+          ball.velocity.mult(ball.direction);
+        }
+        if (!this.inYBounds(ball)) {
+          ball.direction.mult(ball.direction.x, -1);
+          ball.velocity.mult(ball.direction);
+        }
+        if (!this.pause) {
+          ball.move();
+        } else {
+          this.stroke('white');
+          this.text(
+            `position: ${ball.position.toString()}`,
+            ball.position.x + 15,
+            ball.position.y + 10
+          );
+          this.text(
+            `direction: ${ball.direction.toString()}`,
+            ball.position.x + 15,
+            ball.position.y + 30
+          );
+          this.text(
+            `velocity: ${ball.velocity.toString()}`,
+            ball.position.x + 15,
+            ball.position.y + 50
+          );
         }
       });
-      if (!this.inXBounds(ball)) {
-        ball.direction.mult(-1, ball.direction.y);
-        ball.velocity.mult(ball.direction);
+    };
+    this.keyPressed = (event: KeyboardEvent) => {
+      if (event.code === 'Space') {
+        this.pause = !this.pause;
       }
-      if (!this.inYBounds(ball)) {
-        ball.direction.mult(ball.direction.x, -1);
-        ball.velocity.mult(ball.direction);
-      }
-      if (!this.pause) {
-        ball.move();
-      } else {
-        this.stroke('white');
-        this.text(
-          `position: ${ball.position.toString()}`,
-          ball.position.x + 15,
-          ball.position.y + 10
-        );
-        this.text(
-          `direction: ${ball.direction.toString()}`,
-          ball.position.x + 15,
-          ball.position.y + 30
-        );
-        this.text(
-          `velocity: ${ball.velocity.toString()}`,
-          ball.position.x + 15,
-          ball.position.y + 50
-        );
-      }
-    });
+    };
   }
 
   inXBounds(ball: Ball) {
