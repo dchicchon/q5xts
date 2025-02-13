@@ -2489,4 +2489,4 @@ class Q5 {
   }
 }
 
-export { Q5, Vector };
+export { Q5, Vector, Color };

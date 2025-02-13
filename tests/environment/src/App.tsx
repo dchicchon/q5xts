@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Editor, { DiffEditor, useMonaco, loader } from '@monaco-editor/react';
+
 import { Q5, Vector } from '../../../src/index';
 import './App.css';
 
@@ -72,14 +74,12 @@ class Drawing extends Q5 {
   colors: Array<string>;
   ballCount: number;
   balls: Array<Ball>;
-  pause: boolean;
 
   constructor(scope: 'global' | 'offscreen' | '', elm: HTMLDivElement) {
     super(scope, elm);
     this.ballCount = count;
     this.colors = createColors(10);
     this.balls = [];
-    this.pause = false;
     this.setup = () => {
       this.frameRate(60);
       this.resizeCanvas(window.innerWidth, window.innerHeight);
@@ -112,26 +112,6 @@ class Drawing extends Q5 {
         if (!this.inYBounds(ball)) {
           ball.direction.mult(ball.direction.x, -1);
           ball.velocity.mult(ball.direction);
-        }
-        if (!this.pause) {
-          ball.move();
-        } else {
-          this.stroke('white');
-          this.text(
-            `position: ${ball.position.toString()}`,
-            ball.position.x + 15,
-            ball.position.y + 10
-          );
-          this.text(
-            `direction: ${ball.direction.toString()}`,
-            ball.position.x + 15,
-            ball.position.y + 30
-          );
-          this.text(
-            `velocity: ${ball.velocity.toString()}`,
-            ball.position.x + 15,
-            ball.position.y + 50
-          );
         }
       });
     };
@@ -174,7 +154,31 @@ function App() {
     };
   }, []);
 
-  return <div ref={htmlRef} id="sketch"></div>;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+      }}
+    >
+      <div>
+        <Editor
+          theme="vs-dark"
+          width="40vw"
+          defaultLanguage="javascript"
+          defaultValue="// some comment"
+        />
+      </div>
+      <div
+        style={{
+          width: '60vw',
+        }}
+        ref={htmlRef}
+        id="sketch"
+      ></div>
+      ;
+    </div>
+  );
 }
 
 export default App;
