@@ -1,4 +1,4 @@
-# Q5.ts
+# q5.ts
 
 ## Summary
 This project is an TypeScript implementation of the [Q5js project](https://github.com/LingDong-/q5xjs).
