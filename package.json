@@ -1,6 +1,7 @@
 {
   "name": "q5xts",
   "version": "0.0.1",
+  "type": "module",
   "description": "A small and fast alternative (experimental) implementation of p5.js in TypeScript",
   "repository": {
     "type": "git",
@@ -19,9 +20,9 @@
       "default": "./dist/index.mjs"
     }
   },
-  "bin": "./dist/cli.js"
-,
+  "bin": "./dist/cli.js",
   "scripts": {
+    "dev": "vite",
     "start": "tsx ./src/q5.ts",
     "prepare": "simple-git-hooks",
     "build": "pkgroll",
@@ -29,10 +30,16 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react-swc": "^3.8.0",
     "pkgroll": "^2.8.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "simple-git-hooks": "^2.11.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run type-check"

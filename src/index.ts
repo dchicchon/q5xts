@@ -14,14 +14,12 @@ interface StyleType {
   textLeading: number;
   textStyle: string;
 }
-
 interface KeysHeld {
-  [id: number]: boolean
+  [id: number]: boolean;
 }
 interface FilterIml {
   [id: number]: Function;
 }
-
 class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
@@ -157,7 +155,7 @@ class Q5 {
 
   _noLoop: boolean;
   _pixelDensity: number;
-  _frameRate: any;
+  _frameRate: number;
   _tint: any;
 
   private looper: any;
@@ -202,24 +200,19 @@ class Q5 {
   rng1: Shr3 | Lcg;
   ziggurat: Ziggurat;
   eventNames: Array<string>;
+  parent: HTMLElement
 
   hasSensorPermission: boolean;
 
-  constructor(scope: 'global' | 'offscreen' | null, elm: HTMLElement) {
+  constructor(scope: 'global' | 'offscreen' | '', elm: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.height = 100;
     this.width = 100;
     this.canvas.height = this.height;
     this.canvas.width = this.width;
     this.ctx = this.canvas.getContext('2d');
-    elm.appendChild(this.canvas);
-    // if (document.body) {
-    //   document.body.appendChild(this.canvas);
-    // } else {
-    //   window.addEventListener('load', () => {
-    //     document.body.appendChild(this.canvas);
-    //   });
-    // }
+    this.parent = elm
+    this.parent.appendChild(this.canvas);
     this.MAGIC = 0x9a0ce55;
 
     this.RGB = 0;
@@ -379,7 +372,7 @@ class Q5 {
 
     this._pixelDensity = 1;
 
-    this._frameRate = null;
+    this._frameRate = 30;
 
     this._tint = null;
 
@@ -618,10 +611,16 @@ class Q5 {
       'touchEnded',
     ];
 
+    // this.eventNames.forEach(event => {
+
+    // })
+
+    // this is how all the methods are set
     for (let k of this.eventNames) {
       let intern = '_' + k + 'Fn';
-      this[intern] = function () {};
+      this[intern] = () => {};
       this[intern].isPlaceHolder = true;
+      console.log({ intern, k });
       if (this[k]) {
         this[intern] = this[k];
       } else {
@@ -687,11 +686,11 @@ class Q5 {
         this._keyTypedFn(event);
       }
     });
-    window.addEventListener('keyup', function (event) {
+    window.addEventListener('keyup', (event) => {
       this.keyIsPressed = false;
       this.key = event.key;
       this.keyCode = event.keyCode;
-      keysHeld[this.keyCode] = false;
+      this.keysHeld[this.keyCode] = false;
       this._keyReleasedFn(event);
     });
 
@@ -756,7 +755,7 @@ class Q5 {
     //================================================================
 
     // 3d transformation helpers
-    let ROTX = (a:number) => [
+    let ROTX = (a: number) => [
       1,
       0,
       0,
@@ -953,6 +952,12 @@ class Q5 {
   //   this[prop] = val;
   // }
 
+  dispose() {
+    if (this.canvas && this.parent) {
+      this.parent.removeChild(this.canvas);
+    }
+  }
+
   createCanvas(width: number, height: number): HTMLCanvasElement {
     this.width = width;
     this.height = height;
@@ -1043,7 +1048,7 @@ class Q5 {
   radians(x: number) {
     return (x * Math.PI) / 180;
   }
-  createVector(x: number, y: number, z: number) {
+  createVector(x: number, y: number, z?: number) {
     return new Vector(x, y, z);
   }
 
@@ -1191,13 +1196,13 @@ class Q5 {
     this._style.noStroke = true;
   }
 
-  fill() {
+  fill(...args) {
     this._style.noFill = false;
-    if (typeof arguments[0] == 'string') {
-      this.ctx.fillStyle = arguments[0];
+    if (typeof args[0] == 'string') {
+      this.ctx.fillStyle = args[0];
       return;
     }
-    const col = this.color(...arguments);
+    const col = this.color(...args);
     if (col._a <= 0) {
       this._style.noFill = true;
       return;
@@ -1423,10 +1428,10 @@ class Q5 {
     y: number,
     w: number,
     h: number,
-    tl: number,
-    tr: number,
-    br: number,
-    bl: number
+    tl?: number,
+    tr?: number,
+    br?: number,
+    bl?: number
   ): number | void {
     if (this._style.noFill && this._style.noStroke) {
       return;
@@ -1458,10 +1463,10 @@ class Q5 {
     y: number,
     w: number,
     h: number,
-    tl: number,
-    tr: number,
-    br: number,
-    bl: number
+    tl?: number,
+    tr?: number,
+    br?: number,
+    bl?: number
   ) {
     if (this._style.rectMode == this.CENTER) {
       this.roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
@@ -2271,13 +2276,12 @@ class Q5 {
     this.rng1.setSeed(seed);
   }
 
-  // TODO: Fix this
-  random(a?, b?) {
+  random(a?: number | string, b?: number) {
     if (a == undefined) {
       return this.rng1.rand();
     }
     if (typeof a == 'number') {
-      if (b != undefined) {
+      if (b) {
         return this.rng1.rand() * (b - a) + a;
       } else {
         return this.rng1.rand() * a;
@@ -2362,10 +2366,10 @@ class Q5 {
   // FIX THIS
   _draw() {
     if (!this._noLoop) {
-      if (this._frameRate == null) {
-        this.looper = requestAnimationFrame(this._draw);
+      if (!this._frameRate) {
+        this.looper = requestAnimationFrame(() => this._draw);
       } else {
-        this.looper = setTimeout(this._draw, 1000 / this._frameRate);
+        this.looper = setTimeout(() => this._draw, 1000 / this._frameRate);
       }
     }
     this.clearBuff();
@@ -2396,7 +2400,7 @@ class Q5 {
 
   _start() {
     if (this.preloadCnt > 0) {
-      return setTimeout(this._start, 10);
+      return setTimeout(() => this._start(), 10);
     }
     // ctx.save();
     this._setupFn();
@@ -2404,7 +2408,7 @@ class Q5 {
     this._draw();
   }
 
-  keyIsDown(x) {
+  keyIsDown(x: number) {
     return !!this.keysHeld[x];
   }
 

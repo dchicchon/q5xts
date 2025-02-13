@@ -7,7 +7,7 @@ export class Vector {
     z: number;
     cacheNorm: any;
     cacheNormSq: any;
-    constructor(_x: number, _y: number, _z: number) {
+    constructor(_x?: number, _y?: number, _z?: number) {
       this.x = _x || 0;
       this.y = _y || 0;
       this.z = _z || 0;

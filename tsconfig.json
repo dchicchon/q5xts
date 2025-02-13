@@ -1,15 +1,26 @@
 {
   "compilerOptions": {
     "outDir": "./dist",
-    "target": "es5",
+    // "target": "es5",
+    "target": "ES2020",
     // Treat files as modules even if it doesn't use import/export
     "moduleDetection": "force",
     // Ignore module structure
-    "module": "Preserve",
+    // "module": "Preserve",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     // Allow JSON modules to be imported
-    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    // "resolveJsonModule": true,
     // Use correct ESM import behavior
     "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     // Disallow features that require cross-file awareness
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
