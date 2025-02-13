@@ -20,6 +20,7 @@ interface KeysHeld {
 interface FilterIml {
   [id: number]: Function;
 }
+
 class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
@@ -186,7 +187,7 @@ class Q5 {
   acos: Function;
   atan: Function;
   atan2: Function;
-  filterImpl: FilterIml;
+  // filterImpl: FilterIml;
 
   PERLIN_YWRAPB: number;
   PERLIN_YWRAP: number;
@@ -200,19 +201,23 @@ class Q5 {
   rng1: Shr3 | Lcg;
   ziggurat: Ziggurat;
   eventNames: Array<string>;
-  parent: HTMLElement
+  parent: HTMLElement | Window;
 
   hasSensorPermission: boolean;
 
-  constructor(scope: 'global' | 'offscreen' | '', elm: HTMLElement) {
+  constructor(scope: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.height = 100;
     this.width = 100;
     this.canvas.height = this.height;
     this.canvas.width = this.width;
     this.ctx = this.canvas.getContext('2d');
-    this.parent = elm
-    this.parent.appendChild(this.canvas);
+    this.parent = elm || window;
+    if (this.parent instanceof HTMLElement) {
+      this.parent.appendChild(this.canvas);
+    } else {
+      document.body.appendChild(this.canvas);
+    }
     this.MAGIC = 0x9a0ce55;
 
     this.RGB = 0;
@@ -327,7 +332,7 @@ class Q5 {
     this.keyIsPressed = false;
     this.mouseIsPressed = false;
     this.key = null;
-    this.keyCode = null;
+    this.keyCode = 0;
     this.pixels = null;
     this.accelerationX = 0;
     this.accelerationY = 0;
@@ -415,168 +420,168 @@ class Q5 {
     this.acos = Math.acos;
     this.atan = Math.atan;
     this.atan2 = Math.atan2;
-    this.filterImpl = {};
+    // this.filterImpl = {};
 
-    this.filterImpl[this.THRESHOLD] = function (data: Array<number>, thresh: number) {
-      if (thresh == undefined) {
-        thresh = 127.5;
-      } else {
-        thresh *= 255;
-      }
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        data[i] = data[i + 1] = data[i + 2] = gray >= thresh ? 255 : 0;
-      }
-    };
-    this.filterImpl[this.GRAY] = function (data: Array<number>) {
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        data[i] = data[i + 1] = data[i + 2] = gray;
-      }
-    };
-    this.filterImpl[this.OPAQUE] = function (data: Array<number>) {
-      for (let i = 0; i < data.length; i += 4) {
-        data[i + 3] = 255;
-      }
-    };
-    this.filterImpl[this.INVERT] = function (data: Array<number>) {
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = 255 - data[i];
-        data[i + 1] = 255 - data[i + 1];
-        data[i + 2] = 255 - data[i + 2];
-      }
-    };
-    this.filterImpl[this.POSTERIZE] = function (data: Array<number>, lvl: number) {
-      let lvl1 = lvl - 1;
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = (((data[i] * lvl) >> 8) * 255) / lvl1;
-        data[i + 1] = (((data[i + 1] * lvl) >> 8) * 255) / lvl1;
-        data[i + 2] = (((data[i + 2] * lvl) >> 8) * 255) / lvl1;
-      }
-    };
+    // this.filterImpl[this.THRESHOLD] = function (data: Array<number>, thresh: number) {
+    //   if (thresh == undefined) {
+    //     thresh = 127.5;
+    //   } else {
+    //     thresh *= 255;
+    //   }
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    //     data[i] = data[i + 1] = data[i + 2] = gray >= thresh ? 255 : 0;
+    //   }
+    // };
+    // this.filterImpl[this.GRAY] = function (data: Array<number>) {
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    //     data[i] = data[i + 1] = data[i + 2] = gray;
+    //   }
+    // };
+    // this.filterImpl[this.OPAQUE] = function (data: Array<number>) {
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     data[i + 3] = 255;
+    //   }
+    // };
+    // this.filterImpl[this.INVERT] = function (data: Array<number>) {
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     data[i] = 255 - data[i];
+    //     data[i + 1] = 255 - data[i + 1];
+    //     data[i + 2] = 255 - data[i + 2];
+    //   }
+    // };
+    // this.filterImpl[this.POSTERIZE] = function (data: Array<number>, lvl: number) {
+    //   let lvl1 = lvl - 1;
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     data[i] = (((data[i] * lvl) >> 8) * 255) / lvl1;
+    //     data[i + 1] = (((data[i + 1] * lvl) >> 8) * 255) / lvl1;
+    //     data[i + 2] = (((data[i + 2] * lvl) >> 8) * 255) / lvl1;
+    //   }
+    // };
 
-    this.filterImpl[this.DILATE] = (data: Array<number>) => {
-      this.makeTmpBuf();
-      this.tmpBuf.set(data);
-      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let l = 4 * Math.max(j - 1, 0);
-          let r = 4 * Math.min(j + 1, w - 1);
-          let t = 4 * Math.max(i - 1, 0) * w;
-          let b = 4 * Math.min(i + 1, h - 1) * w;
-          let oi = 4 * i * w;
-          let oj = 4 * j;
-          for (let k = 0; k < 4; k++) {
-            let kt = k + t;
-            let kb = k + b;
-            let ko = k + oi;
-            data[oi + oj + k] = Math.max(
-              /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
-              this.tmpBuf[ko + l],
-              this.tmpBuf[ko + oj],
-              this.tmpBuf[ko + r],
-              /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
-            );
-          }
-        }
-      }
-    };
+    // this.filterImpl[this.DILATE] = (data: Array<number>) => {
+    //   this.makeTmpBuf();
+    //   this.tmpBuf.set(data);
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   for (let i = 0; i < h; i++) {
+    //     for (let j = 0; j < w; j++) {
+    //       let l = 4 * Math.max(j - 1, 0);
+    //       let r = 4 * Math.min(j + 1, w - 1);
+    //       let t = 4 * Math.max(i - 1, 0) * w;
+    //       let b = 4 * Math.min(i + 1, h - 1) * w;
+    //       let oi = 4 * i * w;
+    //       let oj = 4 * j;
+    //       for (let k = 0; k < 4; k++) {
+    //         let kt = k + t;
+    //         let kb = k + b;
+    //         let ko = k + oi;
+    //         data[oi + oj + k] = Math.max(
+    //           /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
+    //           this.tmpBuf[ko + l],
+    //           this.tmpBuf[ko + oj],
+    //           this.tmpBuf[ko + r],
+    //           /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
+    //         );
+    //       }
+    //     }
+    //   }
+    // };
 
-    this.filterImpl[this.ERODE] = (data: Array<number>) => {
-      this.makeTmpBuf();
-      this.tmpBuf.set(data);
-      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let l = 4 * Math.max(j - 1, 0);
-          let r = 4 * Math.min(j + 1, w - 1);
-          let t = 4 * Math.max(i - 1, 0) * w;
-          let b = 4 * Math.min(i + 1, h - 1) * w;
-          let oi = 4 * i * w;
-          let oj = 4 * j;
-          for (let k = 0; k < 4; k++) {
-            let kt = k + t;
-            let kb = k + b;
-            let ko = k + oi;
-            data[oi + oj + k] = Math.min(
-              /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
-              this.tmpBuf[ko + l],
-              this.tmpBuf[ko + oj],
-              this.tmpBuf[ko + r],
-              /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
-            );
-          }
-        }
-      }
-    };
+    // this.filterImpl[this.ERODE] = (data: Array<number>) => {
+    //   this.makeTmpBuf();
+    //   this.tmpBuf.set(data);
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   for (let i = 0; i < h; i++) {
+    //     for (let j = 0; j < w; j++) {
+    //       let l = 4 * Math.max(j - 1, 0);
+    //       let r = 4 * Math.min(j + 1, w - 1);
+    //       let t = 4 * Math.max(i - 1, 0) * w;
+    //       let b = 4 * Math.min(i + 1, h - 1) * w;
+    //       let oi = 4 * i * w;
+    //       let oj = 4 * j;
+    //       for (let k = 0; k < 4; k++) {
+    //         let kt = k + t;
+    //         let kb = k + b;
+    //         let ko = k + oi;
+    //         data[oi + oj + k] = Math.min(
+    //           /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
+    //           this.tmpBuf[ko + l],
+    //           this.tmpBuf[ko + oj],
+    //           this.tmpBuf[ko + r],
+    //           /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
+    //         );
+    //       }
+    //     }
+    //   }
+    // };
 
-    this.filterImpl[this.BLUR] = (data: Array<number>, rad: number) => {
-      rad = rad || 1;
-      rad = Math.floor(rad * this._pixelDensity);
-      this.makeTmpBuf();
-      this.tmpBuf.set(data);
+    // this.filterImpl[this.BLUR] = (data: Array<number>, rad: number) => {
+    //   rad = rad || 1;
+    //   rad = Math.floor(rad * this._pixelDensity);
+    //   this.makeTmpBuf();
+    //   this.tmpBuf.set(data);
 
-      let ksize = rad * 2 + 1;
+    //   let ksize = rad * 2 + 1;
 
-      function gauss1d(ksize: number) {
-        let im = new Float32Array(ksize);
-        let sigma = 0.3 * rad + 0.8;
-        let ss2 = sigma * sigma * 2;
-        for (let i = 0; i < ksize; i++) {
-          let x = i - ksize / 2;
-          let z = Math.exp(-(x * x) / ss2) / (2.5066282746 * sigma);
-          im[i] = z;
-        }
-        return im;
-      }
+    //   function gauss1d(ksize: number) {
+    //     let im = new Float32Array(ksize);
+    //     let sigma = 0.3 * rad + 0.8;
+    //     let ss2 = sigma * sigma * 2;
+    //     for (let i = 0; i < ksize; i++) {
+    //       let x = i - ksize / 2;
+    //       let z = Math.exp(-(x * x) / ss2) / (2.5066282746 * sigma);
+    //       im[i] = z;
+    //     }
+    //     return im;
+    //   }
 
-      let kern = gauss1d(ksize);
-      let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let s0 = 0,
-            s1 = 0,
-            s2 = 0,
-            s3 = 0;
-          for (let k = 0; k < ksize; k++) {
-            let jk = Math.min(Math.max(j - rad + k, 0), w - 1);
-            let idx = 4 * (i * w + jk);
-            s0 += this.tmpBuf[idx] * kern[k];
-            s1 += this.tmpBuf[idx + 1] * kern[k];
-            s2 += this.tmpBuf[idx + 2] * kern[k];
-            s3 += this.tmpBuf[idx + 3] * kern[k];
-          }
-          let idx = 4 * (i * w + j);
-          data[idx] = s0;
-          data[idx + 1] = s1;
-          data[idx + 2] = s2;
-          data[idx + 3] = s3;
-        }
-      }
-      this.tmpBuf.set(data);
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w; j++) {
-          let s0 = 0,
-            s1 = 0,
-            s2 = 0,
-            s3 = 0;
-          for (let k = 0; k < ksize; k++) {
-            let ik = Math.min(Math.max(i - rad + k, 0), h - 1);
-            let idx = 4 * (ik * w + j);
-            s0 += this.tmpBuf[idx] * kern[k];
-            s1 += this.tmpBuf[idx + 1] * kern[k];
-            s2 += this.tmpBuf[idx + 2] * kern[k];
-            s3 += this.tmpBuf[idx + 3] * kern[k];
-          }
-          let idx = 4 * (i * w + j);
-          data[idx] = s0;
-          data[idx + 1] = s1;
-          data[idx + 2] = s2;
-          data[idx + 3] = s3;
-        }
-      }
-    };
+    //   let kern = gauss1d(ksize);
+    //   let [w, h] = [this.ctx.canvas.width, this.ctx.canvas.height];
+    //   for (let i = 0; i < h; i++) {
+    //     for (let j = 0; j < w; j++) {
+    //       let s0 = 0,
+    //         s1 = 0,
+    //         s2 = 0,
+    //         s3 = 0;
+    //       for (let k = 0; k < ksize; k++) {
+    //         let jk = Math.min(Math.max(j - rad + k, 0), w - 1);
+    //         let idx = 4 * (i * w + jk);
+    //         s0 += this.tmpBuf[idx] * kern[k];
+    //         s1 += this.tmpBuf[idx + 1] * kern[k];
+    //         s2 += this.tmpBuf[idx + 2] * kern[k];
+    //         s3 += this.tmpBuf[idx + 3] * kern[k];
+    //       }
+    //       let idx = 4 * (i * w + j);
+    //       data[idx] = s0;
+    //       data[idx + 1] = s1;
+    //       data[idx + 2] = s2;
+    //       data[idx + 3] = s3;
+    //     }
+    //   }
+    //   this.tmpBuf.set(data);
+    //   for (let i = 0; i < h; i++) {
+    //     for (let j = 0; j < w; j++) {
+    //       let s0 = 0,
+    //         s1 = 0,
+    //         s2 = 0,
+    //         s3 = 0;
+    //       for (let k = 0; k < ksize; k++) {
+    //         let ik = Math.min(Math.max(i - rad + k, 0), h - 1);
+    //         let idx = 4 * (ik * w + j);
+    //         s0 += this.tmpBuf[idx] * kern[k];
+    //         s1 += this.tmpBuf[idx + 1] * kern[k];
+    //         s2 += this.tmpBuf[idx + 2] * kern[k];
+    //         s3 += this.tmpBuf[idx + 3] * kern[k];
+    //       }
+    //       let idx = 4 * (i * w + j);
+    //       data[idx] = s0;
+    //       data[idx + 1] = s1;
+    //       data[idx + 2] = s2;
+    //       data[idx + 3] = s3;
+    //     }
+    //   }
+    // };
 
     this.PERLIN_YWRAPB = 4;
     this.PERLIN_YWRAP = 1 << this.PERLIN_YWRAPB;
@@ -608,6 +613,7 @@ class Q5 {
       'keyReleased',
       'keyTyped',
       'touchStarted',
+      'touchMoved',
       'touchEnded',
     ];
 
@@ -620,7 +626,6 @@ class Q5 {
       let intern = '_' + k + 'Fn';
       this[intern] = () => {};
       this[intern].isPlaceHolder = true;
-      // console.log({ intern, k });
       if (this[k]) {
         this[intern] = this[k];
       } else {
@@ -681,7 +686,7 @@ class Q5 {
       this.key = event.key;
       this.keyCode = event.keyCode;
       this.keysHeld[this.keyCode] = true;
-      this._keyPressedFn(event);
+      this.keyPressed(event);
       if (event.key.length == 1) {
         this._keyTypedFn(event);
       }
@@ -695,7 +700,13 @@ class Q5 {
     });
 
     this.canvas.ontouchstart = (event) => {
-      this.touches = event.touches.map(this.getTouchInfo);
+      // this.touches = this.getTouchInfo()
+
+      // based on the length we'll go down the list?
+      for (let i = 0; i < event.touches.length; i++) {
+        const touch = event.touches.item(i);
+        this.touches.push(this.getTouchInfo(touch));
+      }
       if (this.isTouchUnaware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
@@ -712,7 +723,10 @@ class Q5 {
       }
     };
     this.canvas.ontouchmove = (event) => {
-      this.touches = event.touches.map(this.getTouchInfo);
+      for (let i = 0; i < event.touches.length; i++) {
+        const touch = event.touches.item(i);
+        this.touches.push(this.getTouchInfo(touch));
+      }
       if (this.isTouchUnaware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
@@ -730,7 +744,10 @@ class Q5 {
     };
 
     this.canvas.ontouchend = this.canvas.ontouchcancel = (event) => {
-      this.touches = event.touches.map(this.getTouchInfo);
+      for (let i = 0; i < event.touches.length; i++) {
+        const touch = event.touches.item(i);
+        this.touches.push(this.getTouchInfo(touch));
+      }
       if (this.isTouchUnaware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
@@ -948,13 +965,15 @@ class Q5 {
     return this.ctx;
   }
 
-  // hint(prop: string, val) {
-  //   this[prop] = val;
-  // }
-
   dispose() {
-    if (this.canvas && this.parent) {
-      this.parent.removeChild(this.canvas);
+    if (this.canvas && this.parent && this.parent instanceof HTMLElement) {
+      console.log(this.canvas, this.parent);
+      console.log('Update code');
+      // TODO: Figure out why this is not working sometimes
+      // TODO: leads to no sketch being shown
+      try {
+        this.parent.removeChild(this.canvas);
+      } catch {}
     }
   }
 
@@ -1048,7 +1067,7 @@ class Q5 {
   radians(x: number) {
     return (x * Math.PI) / 180;
   }
-  createVector(x: number, y: number, z?: number) {
+  static createVector(x: number, y: number, z?: number) {
     return new Vector(x, y, z);
   }
 
@@ -1178,13 +1197,13 @@ class Q5 {
     this.ctx.lineWidth = n;
   }
 
-  stroke() {
+  stroke(...args) {
     this._style.noStroke = false;
-    if (typeof arguments[0] == 'string') {
-      this.ctx.strokeStyle = arguments[0];
+    if (typeof args[0] == 'string') {
+      this.ctx.strokeStyle = args[0];
       return;
     }
-    const col = this.color(...arguments);
+    const col = this.color(...args);
     if (col._a <= 0) {
       this._style.noStroke = true;
       return;
@@ -1260,6 +1279,7 @@ class Q5 {
   //================================================================
 
   clear() {
+    if (!this.ctx) return;
     this.ctx.clearRect(0, 0, this.width, this.height);
   }
 
@@ -1267,6 +1287,7 @@ class Q5 {
     if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
       return this.image(arguments[0], 0, 0, this.width, this.height);
     }
+    if (!this.ctx) return;
     this.ctx.save();
     this.ctx.resetTransform();
     this.ctx.scale(this._pixelDensity, this._pixelDensity);
@@ -1280,7 +1301,7 @@ class Q5 {
   }
 
   line(x0: number, y0: number, x1: number, y1: number) {
-    if (!this._style.noStroke) {
+    if (!this._style.noStroke && this.ctx) {
       this.ctx.beginPath();
       this.ctx.moveTo(x0, y0);
       this.ctx.lineTo(x1, y1);
@@ -1351,8 +1372,8 @@ class Q5 {
     h: number,
     start: number,
     stop: number,
-    mode: number,
-    detail: number
+    mode?: number,
+    detail?: number
   ) {
     if (start == stop) {
       return this.ellipse(x, y, w, h);
@@ -1374,7 +1395,7 @@ class Q5 {
     }
   }
 
-  ellipseImpl(x, y, w, h) {
+  ellipseImpl(x: number, y: number, w: number, h: number) {
     if (this._style.noFill && this._style.noStroke) {
       return;
     }
@@ -1911,52 +1932,52 @@ class Q5 {
     this.ctx.restore();
   }
 
-  filter(typ: number, x: number) {
-    let support = this.HARDWARE_FILTERS && this.ctx.filter != undefined;
-    if (support) {
-      this.makeTmpCtx();
-      if (typ == this.THRESHOLD) {
-        if (x == undefined) {
-          x = 0.5;
-        }
-        x = Math.max(x, 0.00001);
-        let b = Math.floor((0.5 / x) * 100);
-        this.nativeFilter(`saturate(0%) brightnessthis{b}%) contrast(1000000%)`);
-      } else if (typ == this.GRAY) {
-        this.nativeFilter(`saturate(0%)`);
-      } else if (typ == this.OPAQUE) {
-        this.tmpCtx.fillStyle = 'black';
-        this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-        this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
-        this.ctx.save();
-        this.ctx.resetTransform();
-        this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
-        this.ctx.restore();
-      } else if (typ == this.INVERT) {
-        this.nativeFilter(`invert(100%)`);
-      } else if (typ == this.BLUR) {
-        this.nativeFilter(`blur${Math.ceil((x * this._pixelDensity) / 1) || 1}px)`);
-      } else {
-        let imgData = this.ctx.getImageData(
-          0,
-          0,
-          this.ctx.canvas.width,
-          this.ctx.canvas.height
-        );
-        this.filterImpl[typ](imgData.data, x);
-        this.ctx.putImageData(imgData, 0, 0);
-      }
-    } else {
-      let imgData = this.ctx.getImageData(
-        0,
-        0,
-        this.ctx.canvas.width,
-        this.ctx.canvas.height
-      );
-      this.filterImpl[typ](imgData.data, x);
-      this.ctx.putImageData(imgData, 0, 0);
-    }
-  }
+  // filter(typ: number, x: number) {
+  //   let support = this.HARDWARE_FILTERS && this.ctx.filter != undefined;
+  //   if (support) {
+  //     this.makeTmpCtx();
+  //     if (typ == this.THRESHOLD) {
+  //       if (x == undefined) {
+  //         x = 0.5;
+  //       }
+  //       x = Math.max(x, 0.00001);
+  //       let b = Math.floor((0.5 / x) * 100);
+  //       this.nativeFilter(`saturate(0%) brightnessthis{b}%) contrast(1000000%)`);
+  //     } else if (typ == this.GRAY) {
+  //       this.nativeFilter(`saturate(0%)`);
+  //     } else if (typ == this.OPAQUE) {
+  //       this.tmpCtx.fillStyle = 'black';
+  //       this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+  //       this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+  //       this.ctx.save();
+  //       this.ctx.resetTransform();
+  //       this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+  //       this.ctx.restore();
+  //     } else if (typ == this.INVERT) {
+  //       this.nativeFilter(`invert(100%)`);
+  //     } else if (typ == this.BLUR) {
+  //       this.nativeFilter(`blur${Math.ceil((x * this._pixelDensity) / 1) || 1}px)`);
+  //     } else {
+  //       let imgData = this.ctx.getImageData(
+  //         0,
+  //         0,
+  //         this.ctx.canvas.width,
+  //         this.ctx.canvas.height
+  //       );
+  //       this.filterImpl[typ](imgData.data, x);
+  //       this.ctx.putImageData(imgData, 0, 0);
+  //     }
+  //   } else {
+  //     let imgData = this.ctx.getImageData(
+  //       0,
+  //       0,
+  //       this.ctx.canvas.width,
+  //       this.ctx.canvas.height
+  //     );
+  //     this.filterImpl[typ](imgData.data, x);
+  //     this.ctx.putImageData(imgData, 0, 0);
+  //   }
+  // }
 
   resize(w: number, h: number) {
     this.makeTmpCtx();
@@ -2137,12 +2158,13 @@ class Q5 {
   }
 
   textAlign(horiz: CanvasTextAlign, vert?: CanvasTextBaseline) {
+    if (!this.ctx) return;
     this.ctx.textAlign = horiz;
     if (vert) {
       this.ctx.textBaseline = vert == this.CENTER ? 'middle' : vert;
     }
   }
-  text(str: string, x: number, y: number, w: number) {
+  text(str: string, x: number, y: number, w?: number) {
     if (!str) {
       return;
     }
@@ -2364,6 +2386,9 @@ class Q5 {
   //================================================================
 
   // FIX THIS
+  draw() {
+    console.log('pass');
+  }
   _draw() {
     if (!this._noLoop) {
       if (!this._frameRate) {
@@ -2375,7 +2400,7 @@ class Q5 {
     this.clearBuff();
     this.firstVertex = true;
     this.push();
-    this._drawFn();
+    this.draw();
     this.pop();
     ++this.frameCount;
   }
@@ -2398,12 +2423,16 @@ class Q5 {
     this._frameRate = fps;
   }
 
+  setup() {
+    console.log('setup');
+  }
+
   _start() {
     if (this.preloadCnt > 0) {
       return setTimeout(() => this._start(), 10);
     }
     // ctx.save();
-    this._setupFn();
+    this.setup();
     // ctx.restore();
     this._draw();
   }
@@ -2412,7 +2441,8 @@ class Q5 {
     return !!this.keysHeld[x];
   }
 
-  getTouchInfo(touch) {
+  getTouchInfo(touch: Touch | null) {
+    if (!touch) return;
     const rect = this.canvas.getBoundingClientRect();
     const sx = this.canvas.scrollWidth / this.width || 1;
     const sy = this.canvas.scrollHeight / this.height || 1;
@@ -2425,9 +2455,9 @@ class Q5 {
 
   isTouchUnaware() {
     return (
-      this._touchStarted.isPlaceHolder &&
-      this._touchMoved.isPlaceHolder &&
-      this._touchEnded.isPlaceHolder
+      this._touchStartedFn.isPlaceHolder &&
+      this._touchMovedFn.isPlaceHolder &&
+      this._touchEndedFn.isPlaceHolder
     );
   }
 
@@ -2474,5 +2504,4 @@ class Q5 {
     return window.performance.now() - this.millisStart;
   }
 }
-
-export default Q5;
+export { Q5, Vector };
