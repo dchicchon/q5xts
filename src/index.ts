@@ -17,9 +17,9 @@ interface StyleType {
 interface KeysHeld {
   [id: number]: boolean;
 }
-interface FilterIml {
-  [id: number]: Function;
-}
+// interface FilterIml {
+//   [id: number]: Function;
+// }
 
 class Q5 {
   canvas: HTMLCanvasElement;
@@ -2504,4 +2504,5 @@ class Q5 {
     return window.performance.now() - this.millisStart;
   }
 }
+
 export { Q5, Vector };
