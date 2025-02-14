@@ -126,11 +126,6 @@ function App() {
       sx={{
         height: '90vh',
       }}
-      // style={{
-      //   height: '100vh',
-      //   display: 'flex',
-      //   flexDirection: 'row',
-      // }}
     >
       <Grid>
         <div
@@ -171,6 +166,9 @@ function App() {
           </button>
         </div>
         <Editor
+          options={{
+            minimap: { enabled: false },
+          }}
           width="100vw"
           onMount={handleMount}
           theme="vs-dark"
