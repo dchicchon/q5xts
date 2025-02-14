@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Drawing } from './Drawing';
 import { initialCode } from './initialCode';
@@ -6,6 +6,7 @@ import { initialCode } from './initialCode';
 import './App.css';
 
 function App() {
+  const [hover, setHover] = useState(false);
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
   const sketchRef = useRef<Drawing>(null);
@@ -51,10 +52,28 @@ function App() {
           style={{
             display: 'flex',
             justifyContent: 'space-around',
+            alignItems: 'center',
           }}
         >
           <h2>q5xts tester</h2>
-          <button style={{}} onClick={runCode}>
+          <button
+            onMouseEnter={() => {
+              setHover(true);
+            }}
+            onMouseLeave={() => {
+              setHover(false);
+            }}
+            style={{
+              cursor: 'pointer',
+              border: '1px solid',
+              color: 'white',
+              borderRadius: 5,
+              background: hover ? 'rgb(53, 64, 68)' : 'rgb(30, 33, 34)',
+              padding: 10,
+              fontFamily: 'monospace',
+            }}
+            onClick={runCode}
+          >
             Play
           </button>
         </div>
