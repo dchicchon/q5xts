@@ -1,6 +1,6 @@
 {
   "name": "q5xts",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "description": "A small and fast alternative (experimental) implementation of p5.js in TypeScript",
   "repository": {
@@ -26,7 +26,7 @@
     "prepare": "simple-git-hooks",
     "build-client": "tsc -b && vite build",
     "build": "pkgroll build",
-    "deploy-npm": "npm publish --access public",
+    "publish": "npm publish --access public",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
