@@ -1821,7 +1821,7 @@ class Q5 {
     }
   }
 
-  loadImage(url: string, callback: Function) {
+  loadImage(url: string, callback?: Function) {
     this.preloadCnt++;
     let g = this.createGraphics(100, 100);
     let c = g.canvas.getContext('2d');
