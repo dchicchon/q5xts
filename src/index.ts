@@ -209,20 +209,20 @@ class Q5 {
   hasSensorPermission: boolean;
 
   // setup functions
-  draw: Function | null;
-  setup: Function | null;
-  preload: Function | null;
-  mouseDragged: Function | null;
-  mouseMoved: Function | null;
-  mouseReleased: Function | null;
-  mousePressed: Function | null;
-  mouseClicked: Function | null;
-  keyPressed: Function | null;
-  keyTyped: Function | null;
-  keyReleased: Function | null;
-  touchStarted: Function | null;
-  touchMoved: Function | null;
-  touchEnded: Function | null;
+  draw?: Function | null;
+  setup?: Function | null;
+  preload?: Function | null;
+  mouseDragged?: Function | null;
+  mouseMoved?: Function | null;
+  mouseReleased?: Function | null;
+  mousePressed?: Function | null;
+  mouseClicked?: Function | null;
+  keyPressed?: Function | null;
+  keyTyped?: Function | null;
+  keyReleased?: Function | null;
+  touchStarted?: Function | null;
+  touchMoved?: Function | null;
+  touchEnded?: Function | null;
 
   constructor(scope: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     this.canvas = document.createElement('canvas');
@@ -949,9 +949,10 @@ class Q5 {
   // default functions to override
   // SETUP
   dispose() {
+    delete this.draw;
+    delete this.setup;
     if (this.canvas && this.parent && this.parent instanceof HTMLElement) {
       console.log(this.canvas, this.parent);
-      console.log('Update code');
       // TODO: Figure out why this is not working sometimes
       // TODO: leads to no sketch being shown
       try {
@@ -1050,7 +1051,7 @@ class Q5 {
   radians(x: number) {
     return (x * Math.PI) / 180;
   }
-  static createVector(x: number, y: number, z?: number) {
+  createVector(x: number, y: number, z?: number) {
     return new Vector(x, y, z);
   }
 

@@ -7,6 +7,6 @@ export default defineConfig({
     port: 4815,
   },
   root: './tests/environment',
-  base: '/',
-  plugins: [ react()],
+  base: '/q5xts',
+  plugins: [react()],
 });
