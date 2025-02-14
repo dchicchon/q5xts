@@ -3,14 +3,15 @@ import Editor from '@monaco-editor/react';
 import { Drawing } from './Drawing';
 import { initialCode } from './initialCode';
 
-import './App.css';
+// @ts-expect-error says it cant find the file?
+import github from '../assets/github-mark.svg';
 
+import './App.css';
 function App() {
   const [hover, setHover] = useState(false);
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
   const sketchRef = useRef<Drawing>(null);
-  const timeRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!sketchRef.current) return;
@@ -55,6 +56,14 @@ function App() {
             alignItems: 'center',
           }}
         >
+          <a
+            style={{
+              color: 'white',
+            }}
+            href="https://github.com/dchicchon/q5xts"
+          >
+            Github
+          </a>
           <h2>q5xts sandbox</h2>
           <button
             onMouseEnter={() => {
