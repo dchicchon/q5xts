@@ -33,9 +33,9 @@ export class Drawing extends Q5 {
 }
 ```
 
-## Limitations 
+## Limitations
 
-Currently this package does not provide the full usage of the original q5xjs package. Here we focus on utilizing it in a specified element scope and not the global scope. 
+Currently this package does not provide the full usage of the original q5xjs package. Here we focus on utilizing it in a specified element scope and not the global scope.
 
 This package is a work in progress and should include the capabilities of the original project later on
 
@@ -48,3 +48,14 @@ Refer to the [original website](https://q5xjs.netlify.app/) or the original [git
 ## Sandbox
 
 You can view the sandbox environment here: https://dchicchon.github.io/q5xts/
+
+## Example Projects
+
+- [Circuits](https://github.com/dchicchon/circuits)
+
+## Links
+
+- [npm](https://www.npmjs.com/package/q5xts)
+- [q5xjs github](https://github.com/LingDong-/q5xjs)
+- [q5xjs docs](https://q5xjs.netlify.app/)
+- [p5js docs](https://p5js.org/)
