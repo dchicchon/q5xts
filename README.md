@@ -5,7 +5,8 @@
 This project is an TypeScript implementation of the [q5xjs project](https://github.com/LingDong-/q5xjs).
 
 ## Installation
-Insert npm installation docs here   
+
+Insert npm installation docs here
 
 ## Docs
 

@@ -20,13 +20,12 @@
       "default": "./dist/index.mjs"
     }
   },
-  "bin": "./dist/cli.js",
   "scripts": {
     "dev": "vite",
     "start": "tsx ./src/q5.ts",
     "prepare": "simple-git-hooks",
     "build-client": "tsc -b && vite build",
-    "build": "pkgroll",
+    "build": "pkgroll build",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
