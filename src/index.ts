@@ -216,14 +216,20 @@ class Q5 {
   touchEnded?: Function | null;
 
   // @ts-expect-error scope is never read
-  constructor(scope?: 'global' | 'offscreen' | '' = '', elm?: HTMLElement) {
-    this.canvas = document.createElement('canvas');
-    this.height = 100;
-    this.width = 100;
-    this.canvas.height = this.height;
-    this.canvas.width = this.width;
-    this.ctx = this.canvas.getContext('2d');
+  constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
+    // TODO: if no parent should we expect window?
     this.parent = elm || window;
+    if (this.parent instanceof Window) {
+      this.width = this.parent.innerWidth;
+      this.height = this.parent.innerHeight;
+    } else {
+      this.width = this.parent.clientWidth;
+      this.height = this.parent.clientHeight;
+    }
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+    this.ctx = this.canvas.getContext('2d');
     if (this.parent instanceof HTMLElement) {
       this.parent.appendChild(this.canvas);
     } else {

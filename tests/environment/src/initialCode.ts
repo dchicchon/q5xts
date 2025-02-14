@@ -13,7 +13,6 @@ const particleCount = 10
 
 function setup() {
   this.frameRate(60)
-  this.resizeCanvas(this.parent.clientWidth, this.parent.clientHeight)
   for (let i =0; i < particleCount; i++) {
     const particle = new Particle(this);
     particles.push(particle)
