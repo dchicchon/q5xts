@@ -1,12 +1,12 @@
 tests/
-tests/**/*
+tests/**
 .DS_Store
 **/.DS_Store
-dist/
+src/
+src/**
 node_modules
 vite.config.ts
-.github
-.github/**/*
-.github/workflows
+.github/
+.github/**
 tsconfig.json
 pkgroll.config.js
