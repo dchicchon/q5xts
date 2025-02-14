@@ -14,8 +14,3 @@ Refer to the original documention here: https://q5xjs.netlify.app/ or the origin
 ## Sandbox
 
 You can view the sandbox environment here: https://dchicchon.github.io/q5xts/
-
-## Todo
-
-- deploy as npm package
-- deploy static website for usage
