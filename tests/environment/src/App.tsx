@@ -24,7 +24,6 @@ function App() {
   }, []);
 
   const handleMount = (editor) => {
-    console.log('mounting');
     editorRef.current = editor;
   };
 

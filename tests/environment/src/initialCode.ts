@@ -6,6 +6,7 @@ export const initialCode = `
 // "this" cannot be used outside of the "draw" and "sketch"
 // functions
 // Press "Play" button to run sketch
+// View console to see log and error output
 
 let particles = []
 const particleCount = 10
