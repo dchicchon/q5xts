@@ -20,27 +20,6 @@ function App() {
     sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
   }, []);
 
-  // const handleChange = (code: string, event: object) => {
-  //   try {
-  //     code += '\n return {draw, setup}';
-  //     const fn = new Function(code);
-  //     const { draw, setup } = fn();
-
-  //     if (timeRef.current) {
-  //       clearTimeout(timeRef.current);
-  //     }
-  //     const timeId = setTimeout(() => {
-  //       if (sketchRef.current) {
-  //         sketchRef.current.dispose();
-  //       }
-  //       sketchRef.current = new Drawing('', htmlRef.current, draw, setup);
-  //     }, 2000);
-  //     timeRef.current = timeId;
-  //   } catch (err) {
-  //     console.log('unable to parse fn declaration');
-  //   }
-  // };
-
   const handleMount = (editor) => {
     editorRef.current = editor;
   };
