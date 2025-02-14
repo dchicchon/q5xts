@@ -1,7 +1,5 @@
 # q5.ts
 
-## Summary
-
 This project is an TypeScript implementation of the [q5xjs project](https://github.com/LingDong-/q5xjs).
 
 ## Installation
