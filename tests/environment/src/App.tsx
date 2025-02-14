@@ -17,7 +17,7 @@ function App() {
     copyCode += 'return {draw, setup}';
     const fn = new Function(copyCode);
     const { draw, setup } = fn();
-    sketchRef.current = new Drawing('', htmlRef.current, draw, setup);
+    sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
   }, []);
 
   // const handleChange = (code: string, event: object) => {
@@ -42,12 +42,15 @@ function App() {
   // };
 
   const handleMount = (editor, monaco) => {
+    console.log(editor)
     editorRef.current = editor;
   };
 
   const runCode = (e) => {
     if (editorRef.current) {
       console.log('run code');
+
+      //@ts-expect-error not sure what type to set for editorRef
       let code = editorRef.current.getValue();
       code += 'return {draw, setup}';
       const fn = new Function(code);
@@ -55,7 +58,7 @@ function App() {
       if (sketchRef.current) {
         sketchRef.current.dispose();
       }
-      sketchRef.current = new Drawing('', htmlRef.current, draw, setup);
+      sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
     }
   };
 
