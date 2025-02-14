@@ -140,6 +140,8 @@ class Drawing extends Q5 {
 function App() {
   const [sketch, setSketch] = useState<Drawing | null>();
   const htmlRef = useRef<HTMLDivElement>(null);
+  const timeId = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (htmlRef.current && !sketch) {
       const newSketch = new Drawing('', htmlRef.current);
@@ -154,6 +156,23 @@ function App() {
     };
   }, []);
 
+  const handleChange = (value: string, event: object) => {
+    if (timeId.current) {
+      clearTimeout(timeId.current);
+    }
+    const newTimeId = setTimeout(async () => {
+      try {
+        // we can run code this way? Should I try to do stuff here?
+        // const module = await import('../../../src/index');
+        new Function(value)(); //  this works
+      } catch (err) {
+        console.error(err);
+      }
+    }, 3000);
+
+    timeId.current = newTimeId;
+  };
+
   return (
     <div
       style={{
@@ -163,8 +182,10 @@ function App() {
     >
       <div>
         <Editor
+          onChange={handleChange}
           theme="vs-dark"
           width="40vw"
+          value='console.log("Hello from Monaco")'
           defaultLanguage="javascript"
           defaultValue="// some comment"
         />
