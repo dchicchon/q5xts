@@ -9,6 +9,31 @@ export const initialCode = `
 
 let particles = []
 const particleCount = 10
+
+function setup() {
+  this.frameRate(60)
+  this.resizeCanvas(this.parent.clientWidth, this.parent.clientHeight)
+  for (let i =0; i < particleCount; i++) {
+    const particle = new Particle(this);
+    particles.push(particle)
+  }
+}
+
+function draw() {
+  this.background('black')
+  particles.forEach(particle => {
+    particle.draw()
+    if (!inXBounds(this.width, particle)){
+          particle.direction.mult(-1, particle.direction.y);
+          particle.velocity.mult(particle.direction);
+    }
+    if (!inYBounds(this.height,particle)) {
+          particle.direction.mult(particle.direction.x, -1);
+          particle.velocity.mult(particle.direction);
+        }
+  })
+}
+
 const maxSpeed = 5;
 const minSpeed = 2;
 
@@ -59,29 +84,6 @@ function inYBounds(height, particle) {
     );
 }
 
-function setup() {
-  this.frameRate(60)
-  this.resizeCanvas(this.parent.clientWidth, this.parent.clientHeight)
-  for (let i =0; i < particleCount; i++) {
-    const particle = new Particle(this);
-    particles.push(particle)
-  }
-}
-
-function draw() {
-  this.background('black')
-  particles.forEach(particle => {
-    particle.draw()
-    if (!inXBounds(this.width, particle)){
-          particle.direction.mult(-1, particle.direction.y);
-          particle.velocity.mult(particle.direction);
-    }
-    if (!inYBounds(this.height,particle)) {
-          particle.direction.mult(particle.direction.x, -1);
-          particle.velocity.mult(particle.direction);
-        }
-  })
-}
 
 
 

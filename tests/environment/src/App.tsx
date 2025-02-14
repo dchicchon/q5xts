@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Drawing } from './Drawing';
 import { initialCode } from './initialCode';
-
-// @ts-expect-error says it cant find the file?
-import github from '../assets/github-mark.svg';
+import Grid from '@mui/material/Grid2';
+import { useMediaQuery } from '@mui/material';
 
 import './App.css';
+
 function App() {
+  const desktop = useMediaQuery('(min-width:600px)');
   const [hover, setHover] = useState(false);
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
@@ -23,6 +24,7 @@ function App() {
   }, []);
 
   const handleMount = (editor) => {
+    console.log('mounting');
     editorRef.current = editor;
   };
 
@@ -40,15 +42,97 @@ function App() {
     }
   };
 
+  if (desktop) {
+    return (
+      <Grid
+        container
+        sx={{
+          height: '90vh',
+        }}
+        // style={{
+        //   height: '100vh',
+        //   display: 'flex',
+        //   flexDirection: 'row',
+        // }}
+      >
+        <Grid
+          size={{
+            sm: 12,
+            md: 6,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center',
+            }}
+          >
+            <a
+              style={{
+                color: 'white',
+              }}
+              href="https://github.com/dchicchon/q5xts"
+            >
+              Github
+            </a>
+            <h2>q5xts sandbox</h2>
+            <button
+              onMouseEnter={() => {
+                setHover(true);
+              }}
+              onMouseLeave={() => {
+                setHover(false);
+              }}
+              style={{
+                cursor: 'pointer',
+                border: '1px solid',
+                color: 'white',
+                borderRadius: 5,
+                background: hover ? 'rgb(53, 64, 68)' : 'rgb(30, 33, 34)',
+                padding: 10,
+                fontFamily: 'monospace',
+              }}
+              onClick={runCode}
+            >
+              Play
+            </button>
+          </div>
+          <Editor
+            onMount={handleMount}
+            theme="vs-dark"
+            height="100vh"
+            value={initialCode}
+            defaultLanguage="javascript"
+            defaultValue="// some comment"
+          />
+        </Grid>
+        <Grid
+          size={6}
+          style={
+            {
+              // width: '60vw',
+            }
+          }
+          ref={htmlRef}
+          id="sketch"
+        ></Grid>
+      </Grid>
+    );
+  }
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'row',
+    <Grid
+      container
+      sx={{
+        height: '90vh',
       }}
+      // style={{
+      //   height: '100vh',
+      //   display: 'flex',
+      //   flexDirection: 'row',
+      // }}
     >
-      <div>
+      <Grid>
         <div
           style={{
             display: 'flex',
@@ -87,22 +171,17 @@ function App() {
           </button>
         </div>
         <Editor
+          width="100vw"
           onMount={handleMount}
           theme="vs-dark"
-          width="40vw"
+          height="50vh"
           value={initialCode}
           defaultLanguage="javascript"
           defaultValue="// some comment"
         />
-      </div>
-      <div
-        style={{
-          width: '60vw',
-        }}
-        ref={htmlRef}
-        id="sketch"
-      ></div>
-    </div>
+      </Grid>
+      <Grid sx={{ height: '50vh', width: '100%' }} ref={htmlRef} id="sketch"></Grid>
+    </Grid>
   );
 }
 
