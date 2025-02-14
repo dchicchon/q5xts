@@ -900,7 +900,7 @@ class Q5 {
     delete this.draw;
     delete this.setup;
     if (this.canvas && this.parent && this.parent instanceof HTMLElement) {
-      console.log(this.canvas, this.parent);
+      // console.log(this.canvas, this.parent);
       // TODO: Figure out why this is not working sometimes
       // TODO: leads to no sketch being shown
       try {
