@@ -48,11 +48,6 @@ function App() {
         sx={{
           height: '90vh',
         }}
-        // style={{
-        //   height: '100vh',
-        //   display: 'flex',
-        //   flexDirection: 'row',
-        // }}
       >
         <Grid
           size={{
@@ -98,6 +93,11 @@ function App() {
             </button>
           </div>
           <Editor
+          options={{
+            minimap: {
+              enabled: false
+            }
+          }}
             onMount={handleMount}
             theme="vs-dark"
             height="100vh"
