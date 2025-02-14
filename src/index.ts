@@ -2,7 +2,6 @@ import { Vector } from './Vector';
 import { Color } from './Color';
 import { Lcg, Shr3, Ziggurat } from './Random';
 import { MULT, ROTY, ROTX, TRFM } from './helpers';
-// 3d transformation helpers
 
 interface StyleType {
   colorMode: number;
@@ -20,9 +19,6 @@ interface StyleType {
 interface KeysHeld {
   [id: number]: boolean;
 }
-// interface FilterIml {
-//   [id: number]: Function;
-// }
 
 class Q5 {
   canvas: HTMLCanvasElement;
@@ -120,7 +116,6 @@ class Q5 {
 
   SHR3: number;
   LCG: number;
-  HARDWARE_FILTERS: boolean;
 
   frameCount: number;
   mouseX: number;
@@ -168,7 +163,6 @@ class Q5 {
   private imgData: any;
   private preloadCnt: number;
   private keysHeld: KeysHeld;
-  private millisStart: number;
   private tmpCtx: any;
   private tmpCt2: any;
   private tmpBuf: any;
@@ -190,7 +184,6 @@ class Q5 {
   acos: Function;
   atan: Function;
   atan2: Function;
-  // filterImpl: FilterIml;
 
   PERLIN_YWRAPB: number;
   PERLIN_YWRAP: number;
@@ -203,9 +196,7 @@ class Q5 {
   p_perlin: any;
   rng1: Shr3 | Lcg;
   ziggurat: Ziggurat;
-  eventNames: Array<string>;
   parent: HTMLElement | Window;
-
   hasSensorPermission: boolean;
 
   // setup functions
@@ -224,9 +215,8 @@ class Q5 {
   touchMoved?: Function | null;
   touchEnded?: Function | null;
 
-
   // @ts-expect-error scope is never read
-  constructor(scope: 'global' | 'offscreen' | '', elm?: HTMLElement) {
+  constructor(scope?: 'global' | 'offscreen' | '' = '', elm?: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.height = 100;
     this.width = 100;
@@ -336,12 +326,6 @@ class Q5 {
     this.LCG = 2;
 
     //================================================================
-    // HINTS
-    //================================================================
-
-    this.HARDWARE_FILTERS = true;
-
-    //================================================================
     // PUBLIC PROPERTIES
     //================================================================
     this.frameCount = 0;
@@ -411,7 +395,6 @@ class Q5 {
     this.imgData = null;
     this.preloadCnt = 0;
     this.keysHeld = {};
-    this.millisStart = 0;
     this.tmpCtx = null;
     this.tmpCt2 = null;
     this.tmpBuf = null;
@@ -636,46 +619,8 @@ class Q5 {
     this.touchMoved = null;
     this.touchEnded = null;
 
-    this.eventNames = [
-      'setup',
-      'draw',
-      'preload',
-      'mouseMoved',
-      'mousePressed',
-      'mouseReleased',
-      'mouseDragged',
-      'mouseClicked',
-      'keyPressed',
-      'keyReleased',
-      'keyTyped',
-      'touchStarted',
-      'touchMoved',
-      'touchEnded',
-    ];
-
-    // this.eventNames.forEach(event => {
-
-    // })
-
-    // this is how all the methods are set
-    // for (let k of this.eventNames) {
-    //   let intern = '_' + k + 'Fn';
-    //   this[intern] = () => {};
-    //   this[intern].isPlaceHolder = true;
-    //   if (this[k]) {
-    //     this[intern] = this[k];
-    //   } else {
-    //     Object.defineProperty(this, k, {
-    //       set: function (fun) {
-    //         this[intern] = fun;
-    //       },
-    //     });
-    //   }
-    // }
-
     setTimeout(() => {
       this.preload && this.preload();
-      this.millisStart = window.performance.now();
       this._start();
     }, 1);
 
@@ -1944,53 +1889,6 @@ class Q5 {
     this.ctx!.restore();
   }
 
-  // filter(typ: number, x: number) {
-  //   let support = this.HARDWARE_FILTERS && this.ctx!.filter != undefined;
-  //   if (support) {
-  //     this.makeTmpCtx();
-  //     if (typ == this.THRESHOLD) {
-  //       if (x == undefined) {
-  //         x = 0.5;
-  //       }
-  //       x = Math.max(x, 0.00001);
-  //       let b = Math.floor((0.5 / x) * 100);
-  //       this.nativeFilter(`saturate(0%) brightnessthis{b}%) contrast(1000000%)`);
-  //     } else if (typ == this.GRAY) {
-  //       this.nativeFilter(`saturate(0%)`);
-  //     } else if (typ == this.OPAQUE) {
-  //       this.tmpCtx.fillStyle = 'black';
-  //       this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-  //       this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
-  //       this.ctx!.save();
-  //       this.ctx!.resetTransform();
-  //       this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-  //       this.ctx!.restore();
-  //     } else if (typ == this.INVERT) {
-  //       this.nativeFilter(`invert(100%)`);
-  //     } else if (typ == this.BLUR) {
-  //       this.nativeFilter(`blur${Math.ceil((x * this._pixelDensity) / 1) || 1}px)`);
-  //     } else {
-  //       let imgData = this.ctx!.getImageData(
-  //         0,
-  //         0,
-  //         this.ctx!.canvas.width,
-  //         this.ctx!.canvas.height
-  //       );
-  //       this.filterImpl[typ](imgData.data, x);
-  //       this.ctx!.putImageData(imgData, 0, 0);
-  //     }
-  //   } else {
-  //     let imgData = this.ctx!.getImageData(
-  //       0,
-  //       0,
-  //       this.ctx!.canvas.width,
-  //       this.ctx!.canvas.height
-  //     );
-  //     this.filterImpl[typ](imgData.data, x);
-  //     this.ctx!.putImageData(imgData, 0, 0);
-  //   }
-  // }
-
   resize(w: number, h: number) {
     this.makeTmpCtx();
     this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
@@ -2359,10 +2257,6 @@ class Q5 {
   // ENVIRONMENT
   //================================================================
 
-  print() {
-    return console.log;
-  }
-
   cursor(name: string, x?: number, y?: number) {
     let pfx = '';
     if (name.includes('.')) {
@@ -2492,29 +2386,6 @@ class Q5 {
         })
         .catch(alert);
     }
-  }
-
-  //================================================================
-  // TIME
-  //================================================================
-
-  year() {
-    return new Date().getFullYear();
-  }
-  day() {
-    return new Date().getDay();
-  }
-  hour() {
-    return new Date().getHours();
-  }
-  minute() {
-    return new Date().getMinutes();
-  }
-  second() {
-    return new Date().getSeconds();
-  }
-  millis() {
-    return window.performance.now() - this.millisStart;
   }
 }
 
