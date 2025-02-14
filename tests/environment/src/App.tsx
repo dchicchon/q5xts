@@ -41,15 +41,12 @@ function App() {
   //   }
   // };
 
-  const handleMount = (editor, monaco) => {
-    console.log(editor);
+  const handleMount = (editor) => {
     editorRef.current = editor;
   };
 
   const runCode = (e) => {
     if (editorRef.current) {
-      console.log('run code');
-
       //@ts-expect-error not sure what type to set for editorRef
       let code = editorRef.current.getValue();
       code += 'return {draw, setup}';
