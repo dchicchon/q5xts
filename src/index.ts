@@ -224,6 +224,8 @@ class Q5 {
   touchMoved?: Function | null;
   touchEnded?: Function | null;
 
+
+  // @ts-expect-error scope is never read
   constructor(scope: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.height = 100;
@@ -798,6 +800,7 @@ class Q5 {
 
     this.hasSensorPermission =
       (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) ||
+      // @ts-expect-error requestPermission is not found on event.
       !(DeviceOrientationEvent.requestPermission || DeviceMotionEvent.requestPermission);
 
     //================================================================
@@ -1196,6 +1199,8 @@ class Q5 {
       this._style.noStroke = true;
       return;
     }
+    // @ts-expect-errorType 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
+    // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern
     this.ctx!.strokeStyle = col;
   }
 
@@ -1215,6 +1220,9 @@ class Q5 {
       this._style.noFill = true;
       return;
     }
+
+    // @ts-expect-error Type 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
+    // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
     this.ctx!.fillStyle = col;
   }
 
@@ -1282,6 +1290,8 @@ class Q5 {
       this.ctx!.fillStyle = args[0];
     } else {
       const [r, g, b, a] = args;
+      // @ts-expect-error Type 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
+      // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
       this.ctx!.fillStyle = this.color(r, g, b, a);
     }
     this.ctx!.fillRect(0, 0, this.width, this.height);
@@ -1374,10 +1384,14 @@ class Q5 {
     }
     if (this._style.ellipseMode == this.CENTER) {
       this.arcImpl(x, y, w, h, start, stop, mode, detail);
+
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.RADIUS) {
       this.arcImpl(x, y, w * 2, h * 2, start, stop, mode, detail);
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.CORNER) {
       this.arcImpl(x + w / 2, y + h / 2, w, h, start, stop, mode, detail);
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.CORNERS) {
       this.arcImpl((x + w) / 2, (y + h) / 2, w - x, h - y, start, stop, mode, detail);
     }
@@ -1400,10 +1414,13 @@ class Q5 {
     }
     if (this._style.ellipseMode == this.CENTER) {
       this.ellipseImpl(x, y, w, h);
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.RADIUS) {
       this.ellipseImpl(x, y, w * 2, h * 2);
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.CORNER) {
       this.ellipseImpl(x + w / 2, y + h / 2, w, h);
+      //@ts-expect-error string not assignable to number
     } else if (this._style.ellipseMode == this.CORNERS) {
       this.ellipseImpl((x + w) / 2, (y + h) / 2, w - x, h - y);
     }
@@ -1479,6 +1496,7 @@ class Q5 {
     br?: number,
     bl?: number
   ) {
+    //@ts-expect-error number not assignable to string
     if (this._style.rectMode == this.CENTER) {
       this.roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
     } else if (this._style.rectMode == this.RADIUS) {
@@ -1693,6 +1711,7 @@ class Q5 {
     const p2 = this.curveBuff[this.curveBuff.length - 2];
     const p3 = this.curveBuff[this.curveBuff.length - 1];
     const pts = this.catmullRomSpline(
+      //@ts-expect-errorA spread argument must either have a tuple type or be passed to a rest parameter.
       ...p0,
       ...p1,
       ...p2,
@@ -1702,8 +1721,10 @@ class Q5 {
     );
     for (let i = 0; i < pts.length; i++) {
       if (this.firstVertex) {
+        //@ts-expect-errorA spread argument must either have a tuple type or be passed to a rest parameter.
         this.ctx!.moveTo(...pts[i]);
       } else {
+        //@ts-expect-errorA spread argument must either have a tuple type or be passed to a rest parameter.
         this.ctx!.lineTo(...pts[i]);
       }
       this.firstVertex = false;
@@ -1790,6 +1811,7 @@ class Q5 {
   // IMAGING
   //================================================================
   image(
+    //@ts-expect-error img is set to any type
     img,
     dx: number,
     dy: number,
@@ -2447,12 +2469,18 @@ class Q5 {
   }
 
   requestSensorPermissions() {
+    // @ts-expect-error requestPermission does not exists on here
     if (DeviceOrientationEvent.requestPermission) {
+      // @ts-expect-error requestPermission does not exists on here
       DeviceOrientationEvent.requestPermission()
+        // @ts-expect-error implicit any type
         .then((response) => {
           if (response == 'granted') {
+            // @ts-expect-error requestPermission does not exists on here
             if (DeviceMotionEvent.requestPermission) {
+              // @ts-expect-error requestPermission does not exists on here
               DeviceMotionEvent.requestPermission()
+                // @ts-expect-error implicit any type
                 .then((response) => {
                   if (response == 'granted') {
                     this.hasSensorPermission = true;

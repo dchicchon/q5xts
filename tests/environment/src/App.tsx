@@ -42,7 +42,7 @@ function App() {
   // };
 
   const handleMount = (editor, monaco) => {
-    console.log(editor)
+    console.log(editor);
     editorRef.current = editor;
   };
 

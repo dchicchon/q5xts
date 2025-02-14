@@ -34,6 +34,8 @@ export const ROTY = (a: number) => [
   0,
   1,
 ];
+
+// @ts-expect-error implicit any type
 export const MULT = (A, B) => [
   A[0] * B[0] + A[1] * B[4] + A[2] * B[8] + A[3] * B[12],
   A[0] * B[1] + A[1] * B[5] + A[2] * B[9] + A[3] * B[13],
@@ -52,6 +54,7 @@ export const MULT = (A, B) => [
   A[12] * B[2] + A[13] * B[6] + A[14] * B[10] + A[15] * B[14],
   A[12] * B[3] + A[13] * B[7] + A[14] * B[11] + A[15] * B[15],
 ];
+// @ts-expect-error implicit any type
 export const TRFM = (A, v) => [
   (A[0] * v[0] + A[1] * v[1] + A[2] * v[2] + A[3]) /
     (A[12] * v[0] + A[13] * v[1] + A[14] * v[2] + A[15]),
