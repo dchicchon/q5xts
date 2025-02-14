@@ -1,14 +1,21 @@
 # q5.ts
 
 ## Summary
+
 This project is an TypeScript implementation of the [q5xjs project](https://github.com/LingDong-/q5xjs).
 
+## Installation
+Insert npm installation docs here   
+
 ## Docs
+
 Refer to the original documention here: https://q5xjs.netlify.app/ or the original github repo.
 
-## Demo
-insert demo information here
+## Sandbox
+
+You can view the sandbox environment here: https://dchicchon.github.io/q5xts/
 
 ## Todo
+
 - deploy as npm package
 - deploy static website for usage
