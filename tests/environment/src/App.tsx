@@ -55,7 +55,7 @@ function App() {
             alignItems: 'center',
           }}
         >
-          <h2>q5xts tester</h2>
+          <h2>q5xts sandbox</h2>
           <button
             onMouseEnter={() => {
               setHover(true);
