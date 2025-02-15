@@ -41,6 +41,7 @@ function App() {
   const resetCode = () => {
     if (!editorRef.current) return;
     let copyCode = initialCode.slice();
+    // @ts-expect-error setValue error here. same as above
     editorRef.current.setValue(initialCode);
     copyCode += 'return {draw, setup}';
     const fn = new Function(copyCode);
