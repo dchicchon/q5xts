@@ -1,33 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Drawing } from './Drawing';
-import { initialCode } from './initialCode';
 import Grid from '@mui/material/Grid2';
+
+import { Drawing } from './Drawing';
 import { useMediaQuery } from '@mui/material';
+import { initialCode } from './initialCode';
+import Button from './components/Button';
 
 import './App.css';
 
 function App() {
   const desktop = useMediaQuery('(min-width:600px)');
-  const [hover, setHover] = useState(false);
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
   const sketchRef = useRef<Drawing>(null);
 
   useEffect(() => {
     if (!sketchRef.current) return;
-    let copyCode = initialCode.slice();
-    copyCode += 'return {draw, setup}';
-    const fn = new Function(copyCode);
-    const { draw, setup } = fn();
-    sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+    resetCode();
   }, []);
 
   const handleMount = (editor) => {
     editorRef.current = editor;
   };
 
-  const runCode = (e) => {
+  const runCode = () => {
     if (editorRef.current) {
       //@ts-expect-error not sure what type to set for editorRef
       let code = editorRef.current.getValue();
@@ -41,92 +38,25 @@ function App() {
     }
   };
 
-  if (desktop) {
-    return (
+  const resetCode = () => {
+    let copyCode = initialCode.slice();
+    copyCode += 'return {draw, setup}';
+    const fn = new Function(copyCode);
+    const { draw, setup } = fn();
+    if (sketchRef.current) {
+      sketchRef.current.dispose();
+    }
+    sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+  };
+
+  return (
+    <Grid container>
       <Grid
-        container
-        sx={{
-          height: '90vh',
+        size={{
+          sm: 12,
+          md: 6,
         }}
       >
-        <Grid
-          size={{
-            sm: 12,
-            md: 6,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-around',
-              alignItems: 'center',
-            }}
-          >
-            <a
-              style={{
-                color: 'white',
-              }}
-              href="https://github.com/dchicchon/q5xts"
-            >
-              Github
-            </a>
-            <h2>q5xts sandbox</h2>
-            <button
-              onMouseEnter={() => {
-                setHover(true);
-              }}
-              onMouseLeave={() => {
-                setHover(false);
-              }}
-              style={{
-                cursor: 'pointer',
-                border: '1px solid',
-                color: 'white',
-                borderRadius: 5,
-                background: hover ? 'rgb(53, 64, 68)' : 'rgb(30, 33, 34)',
-                padding: 10,
-                fontFamily: 'monospace',
-              }}
-              onClick={runCode}
-            >
-              Play
-            </button>
-          </div>
-          <Editor
-          options={{
-            minimap: {
-              enabled: false
-            }
-          }}
-            onMount={handleMount}
-            theme="vs-dark"
-            height="100vh"
-            value={initialCode}
-            defaultLanguage="javascript"
-            defaultValue="// some comment"
-          />
-        </Grid>
-        <Grid
-          size={6}
-          style={
-            {
-              // width: '60vw',
-            }
-          }
-          ref={htmlRef}
-          id="sketch"
-        ></Grid>
-      </Grid>
-    );
-  }
-  return (
-    <Grid
-      container
-      sx={{
-        height: '90vh',
-      }}
-    >
-      <Grid>
         <div
           style={{
             display: 'flex',
@@ -143,41 +73,40 @@ function App() {
             Github
           </a>
           <h2>q5xts sandbox</h2>
-          <button
-            onMouseEnter={() => {
-              setHover(true);
-            }}
-            onMouseLeave={() => {
-              setHover(false);
-            }}
-            style={{
-              cursor: 'pointer',
-              border: '1px solid',
-              color: 'white',
-              borderRadius: 5,
-              background: hover ? 'rgb(53, 64, 68)' : 'rgb(30, 33, 34)',
-              padding: 10,
-              fontFamily: 'monospace',
-            }}
-            onClick={runCode}
-          >
-            Play
-          </button>
+
+          <div style={{ display: 'flex', gap: 5 }}>
+            <Button onClick={runCode}>play</Button>
+            <Button onClick={resetCode}>reset</Button>
+          </div>
         </div>
         <Editor
           options={{
-            minimap: { enabled: false },
+            minimap: {
+              enabled: false,
+            },
           }}
-          width="100vw"
           onMount={handleMount}
           theme="vs-dark"
-          height="50vh"
+          width={desktop ? '50vw' : '100vw'}
+          height={desktop ? '100vh' : '50vh'}
           value={initialCode}
           defaultLanguage="javascript"
           defaultValue="// some comment"
         />
       </Grid>
-      <Grid sx={{ height: '50vh', width: '100%' }} ref={htmlRef} id="sketch"></Grid>
+      <Grid
+        sx={
+          desktop
+            ? {}
+            : {
+                height: '50vh',
+                width: '100%',
+              }
+        }
+        size={6}
+        ref={htmlRef}
+        id="sketch"
+      ></Grid>
     </Grid>
   );
 }
