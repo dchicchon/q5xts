@@ -60,7 +60,7 @@ class Particle {
   }
 
   draw() {
-    this.sketch.fill('green')
+    this.sketch.fill('white')
     this.sketch.circle(this.pos.x, this.pos.y, this.diameter)
     this.move();
   }
