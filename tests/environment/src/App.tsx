@@ -39,7 +39,9 @@ function App() {
   };
 
   const resetCode = () => {
+    if (!editorRef.current) return;
     let copyCode = initialCode.slice();
+    editorRef.current.setValue(initialCode);
     copyCode += 'return {draw, setup}';
     const fn = new Function(copyCode);
     const { draw, setup } = fn();
