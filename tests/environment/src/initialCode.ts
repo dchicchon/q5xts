@@ -55,7 +55,7 @@ class Particle {
     this.pos = this.sketch.createVector(xPos, yPos)
     this.velocity = this.sketch.createVector(xVel,yVel)
     const dirs = [1, -1];
-    this.direction = this.sketch.createVector(dirs[randomInt(dirs.length)], dirs(randomInt(dirs.length)));
+    this.direction = this.sketch.createVector(dirs[randomInt(dirs.length)], dirs[(randomInt(dirs.length))]);
     this.velocity.mult(this.direction);
   }
 
