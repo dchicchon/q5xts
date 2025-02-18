@@ -218,23 +218,14 @@ class Q5 {
   // @ts-expect-error scope is never read
   constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     // TODO: if no parent should we expect window?
-    this.parent = elm || window;
-    if (this.parent instanceof Window) {
-      this.width = this.parent.innerWidth;
-      this.height = this.parent.innerHeight;
-    } else {
-      this.width = this.parent.clientWidth;
-      this.height = this.parent.clientHeight;
-    }
+    this.parent = elm || document.body;
+    this.width = this.parent.clientWidth;
+    this.height = this.parent.clientHeight;
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d');
-    if (this.parent instanceof HTMLElement) {
-      this.parent.appendChild(this.canvas);
-    } else {
-      document.body.appendChild(this.canvas);
-    }
+    this.parent.appendChild(this.canvas);
     this.MAGIC = 0x9a0ce55;
 
     this.RGB = 0;
@@ -973,8 +964,8 @@ class Q5 {
     }
   }
 
-  lerp(a: number, b: number, t: number) {
-    return a * (1 - t) + b * t;
+  lerp(start: number, stop: number, t: number) {
+    return start * (1 - t) + stop * t;
   }
   constrain(x: number, lo: number, hi: number) {
     return Math.min(Math.max(x, lo), hi);
@@ -1051,11 +1042,10 @@ class Q5 {
   }
 
   // TODO: Likely HSV calculations may be wrong. tofix
-  color(r: Color | number, g: number, b: number, a: number): Color | null {
-    if (arguments.length === 1 && r instanceof Color) {
+  color(r: number | Color, g: number, b: number, a: number) {
+    if (r instanceof Color) {
       return r;
     }
-    if (r instanceof Color) return null;
     if (this._style.colorMode === this.RGB) {
       if (arguments.length === 1) {
         return new Color(r, r, r, 1);
@@ -1081,7 +1071,6 @@ class Q5 {
         return new Color(newR, newG, newB, a / 255);
       }
     }
-    return null;
   }
   red(c: Color) {
     return c._r;
@@ -1136,45 +1125,40 @@ class Q5 {
     this.ctx!.lineWidth = n;
   }
 
-  stroke(...args: Array<any>) {
+  stroke(r: string | number | Color, g?: number, b?: number, a?: number) {
     this._style.noStroke = false;
-    if (typeof args[0] == 'string') {
-      this.ctx!.strokeStyle = args[0];
-      return;
+    if (typeof r == 'string') {
+      this.ctx!.strokeStyle = r;
+    } else if (r instanceof Color) {
+      this.ctx!.strokeStyle = r.toString();
+    } else {
+      const col = new Color(r, g!, b!, a!);
+      if (col!._a <= 0) {
+        this._style.noStroke = true;
+      } else {
+        this.ctx!.strokeStyle = col.toString();
+      }
     }
-
-    const [r, g, b, a] = args;
-    if (typeof g !== 'number' || typeof b !== 'number' || typeof a !== 'number') return;
-    const col = this.color(r, g, b, a);
-    if (col!._a <= 0) {
-      this._style.noStroke = true;
-      return;
-    }
-    // @ts-expect-errorType 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
-    // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern
-    this.ctx!.strokeStyle = col;
   }
 
   noStroke() {
     this._style.noStroke = true;
   }
 
-  fill(...args: Array<any>) {
+  fill(r: string | number | Color, g?: number, b?: number, a?: number) {
     this._style.noFill = false;
-    if (typeof args[0] == 'string') {
-      this.ctx!.fillStyle = args[0];
-      return;
+    if (typeof r == 'string') {
+      this.ctx!.fillStyle = r;
+    } else if (r instanceof Color) {
+      this.ctx!.fillStyle = r.toString();
+    } else {
+      const col = new Color(r, g!, b!, a!);
+      if (col!._a <= 0) {
+        this._style.noFill = true;
+      } else {
+        this.ctx!.fillStyle = r.toString();
+      }
     }
-    const [r, g, b, a] = args;
-    const col = this.color(r, g, b, a);
-    if (col!._a <= 0) {
-      this._style.noFill = true;
-      return;
-    }
-
-    // @ts-expect-error Type 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
-    // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
-    this.ctx!.fillStyle = col;
   }
 
   noFill() {
@@ -1440,8 +1424,8 @@ class Q5 {
   rect(
     x: number,
     y: number,
-    w: number,
-    h: number,
+    width: number,
+    height: number,
     tl?: number,
     tr?: number,
     br?: number,
@@ -1449,13 +1433,13 @@ class Q5 {
   ) {
     //@ts-expect-error number not assignable to string
     if (this._style.rectMode == this.CENTER) {
-      this.roundedRectImpl(x - w / 2, y - h / 2, w, h, tl, tr, br, bl);
+      this.roundedRectImpl(x - width / 2, y - height / 2, width, height, tl, tr, br, bl);
     } else if (this._style.rectMode == this.RADIUS) {
-      this.roundedRectImpl(x - w, y - h, w * 2, h * 2, tl, tr, br, bl);
+      this.roundedRectImpl(x - width, y - height, width * 2, height * 2, tl, tr, br, bl);
     } else if (this._style.rectMode == this.CORNER) {
-      this.roundedRectImpl(x, y, w, h, tl, tr, br, bl);
+      this.roundedRectImpl(x, y, width, height, tl, tr, br, bl);
     } else if (this._style.rectMode == this.CORNERS) {
-      this.roundedRectImpl(x, y, w - x, h - y, tl, tr, br, bl);
+      this.roundedRectImpl(x, y, width - x, height - y, tl, tr, br, bl);
     }
   }
 
@@ -1489,12 +1473,21 @@ class Q5 {
     this.clearBuff();
     this.firstVertex = true;
   }
-  vertex(x: number, y: number) {
+
+  vertex(x: number | Vector, y: number) {
     this.clearBuff();
     if (this.firstVertex) {
-      this.ctx!.moveTo(x, y);
+      if (x instanceof Vector) {
+        this.ctx!.moveTo(x.x, x.y);
+      } else {
+        this.ctx!.moveTo(x, y);
+      }
     } else {
-      this.ctx!.lineTo(x, y);
+      if (x instanceof Vector) {
+        this.ctx!.lineTo(x.x, x.y);
+      } else {
+        this.ctx!.lineTo(x, y);
+      }
     }
     this.firstVertex = false;
   }
@@ -1987,7 +1980,10 @@ class Q5 {
 
   tint(...args: Array<any>) {
     const [r, g, b, a] = args;
-    this._tint = this.color(r, g, b, a);
+    const color = this.color(r, g, b, a);
+    if (color) {
+      this._tint = color;
+    }
   }
 
   noTint() {

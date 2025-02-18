@@ -25,8 +25,8 @@
     "start": "tsx ./src/q5.ts",
     "prepare": "simple-git-hooks",
     "build-client": "tsc -b && vite build",
-    "build-package": "pkgroll build",
-    "deploy": "npm run build-package && npm publish",
+    "build-setup": "npm version patch && pkgroll build",
+    "deploy": "npm run build-setup && npm publish",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
@@ -48,6 +48,6 @@
     "vite": "^6.1.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "npm run type-check"
+    "pre-push": "npm run type-check"
   }
 }
