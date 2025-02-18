@@ -196,7 +196,7 @@ class Q5 {
   p_perlin: any;
   rng1: Shr3 | Lcg;
   ziggurat: Ziggurat;
-  parent: HTMLElement | Window;
+  parent: HTMLElement;
   hasSensorPermission: boolean;
 
   // setup functions
