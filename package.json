@@ -1,6 +1,6 @@
 {
   "name": "q5xts",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "type": "module",
   "description": "A small and fast alternative (experimental) implementation of p5.js in TypeScript",
   "repository": {
