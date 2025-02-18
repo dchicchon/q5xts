@@ -219,8 +219,8 @@ class Q5 {
   constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     // TODO: if no parent should we expect window?
     this.parent = elm || document.body;
-    this.width = this.parent.clientWidth;
-    this.height = this.parent.clientHeight;
+    this.width = elm ?  this.parent.clientWidth : window.innerWidth
+    this.height = elm ?  this.parent.clientHeight : window.innerHeight
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
