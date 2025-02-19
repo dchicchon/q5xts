@@ -8,6 +8,7 @@ import Button from '../../components/Button';
 
 import { Drawing } from '../../Drawing';
 import { initialCode } from '../../initialCode';
+import { emptyCode } from '../../emptyCode';
 import Link from '../../components/Link/Link';
 
 function Sandbox() {
@@ -39,11 +40,30 @@ function Sandbox() {
     }
   };
 
+  const clear = () => {
+    if (editorRef.current) {
+      // @ts-expect-error setValue error here. same as above
+      editorRef.current.setValue(emptyCode);
+
+      let copyCode = emptyCode.slice();
+      copyCode += 'return {draw, setup}';
+
+
+      const fn = new Function(copyCode);
+      const { draw, setup } = fn();
+      if (sketchRef.current) {
+        sketchRef.current.dispose();
+      }
+      sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+    }
+  };
+
   const resetCode = () => {
     if (!editorRef.current) return;
-    let copyCode = initialCode.slice();
     // @ts-expect-error setValue error here. same as above
     editorRef.current.setValue(initialCode);
+    
+    let copyCode = initialCode.slice();
     copyCode += 'return {draw, setup}';
     const fn = new Function(copyCode);
     const { draw, setup } = fn();
@@ -79,6 +99,7 @@ function Sandbox() {
           <Typography>sandbox</Typography>
           <div style={{ display: 'flex', gap: 5 }}>
             <Button onClick={runCode}>play</Button>
+            <Button onClick={clear}>clear</Button>
             <Button onClick={resetCode}>reset</Button>
           </div>
         </Box>
