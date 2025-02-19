@@ -38,7 +38,6 @@ function ColorTester() {
     if (elmRef.current) {
       sketch = new Q5();
       const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-      console.log({ luminance });
       const newColor = luminance < 150 ? 'white' : 'black';
       setFontColor(newColor);
       const color = new Color(red, green, blue, 1);

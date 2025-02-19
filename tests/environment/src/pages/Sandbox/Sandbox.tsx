@@ -75,11 +75,7 @@ function Sandbox() {
             }}
           >
             <Link color="white" title="Home" to="/q5xts" />
-            <Link
-              color="white"
-              title="Github"
-              href="https://github.com/dchicchon/q5xts"
-            />
+         
           </Box>
           <Typography>sandbox</Typography>
           <div style={{ display: 'flex', gap: 5 }}>
