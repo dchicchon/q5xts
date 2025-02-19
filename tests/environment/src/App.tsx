@@ -10,7 +10,7 @@ import './App.css';
 
 function App() {
   return (
-    <Router base="/q5xts" hook={useHashLocation}>
+    <Router hook={useHashLocation}>
       <Switch>
         <Route path="/" component={Home}></Route>
         <Route path="/sandbox" component={Sandbox}></Route>
