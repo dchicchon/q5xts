@@ -8,6 +8,7 @@ import Link from '../../components/Link/Link';
 
 // @ts-expect-error error checking css module fix later
 import styles from './ColorTester.module.css';
+import { useStore } from '../../utils/store';
 
 function CursorGrowIcon(props: React.ComponentProps<'svg'>) {
   return (
@@ -26,9 +27,13 @@ function CursorGrowIcon(props: React.ComponentProps<'svg'>) {
 }
 
 function ColorTester() {
-  const [red, setRed] = useState(0);
-  const [green, setGreen] = useState(100);
-  const [blue, setBlue] = useState(100);
+  const red = useStore((state) => state.red);
+  const green = useStore((state) => state.green);
+  const blue = useStore((state) => state.blue);
+
+  const setRed = useStore((state) => state.setRed);
+  const setGreen = useStore((state) => state.setGreen);
+  const setBlue = useStore((state) => state.setBlue);
   const [fontColor, setFontColor] = useState('white');
 
   const elmRef = useRef(null);

@@ -10,8 +10,15 @@ import { Drawing } from '../../Drawing';
 import { initialCode } from '../../initialCode';
 import { emptyCode } from '../../emptyCode';
 import Link from '../../components/Link/Link';
+import { useStore } from '../../utils/store';
+
+// TODO: Update type definitions for editor to use
+// https://stackoverflow.com/questions/43058191/how-to-use-addextralib-in-monaco-with-an-external-type-definition/66948535?answertab=trending#tab-top
+// https://stackoverflow.com/questions/63310682/how-to-load-npm-module-type-definition-in-monaco-using-webpack-and-react-create
 
 function Sandbox() {
+  const code = useStore((state) => state.code);
+  const setCode = useStore((state) => state.setCode);
   const desktop = useMediaQuery('(min-width:600px)');
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
@@ -28,10 +35,8 @@ function Sandbox() {
 
   const runCode = () => {
     if (editorRef.current) {
-      //@ts-expect-error not sure what type to set for editorRef
-      let code = editorRef.current.getValue();
-      code += 'return {draw, setup}';
-      const fn = new Function(code);
+      const testCode = code + 'return {draw, setup}';
+      const fn = new Function(testCode);
       const { draw, setup } = fn();
       if (sketchRef.current) {
         sketchRef.current.dispose();
@@ -44,17 +49,7 @@ function Sandbox() {
     if (editorRef.current) {
       // @ts-expect-error setValue error here. same as above
       editorRef.current.setValue(emptyCode);
-
-      let copyCode = emptyCode.slice();
-      copyCode += 'return {draw, setup}';
-
-
-      const fn = new Function(copyCode);
-      const { draw, setup } = fn();
-      if (sketchRef.current) {
-        sketchRef.current.dispose();
-      }
-      sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+      runCode();
     }
   };
 
@@ -62,15 +57,11 @@ function Sandbox() {
     if (!editorRef.current) return;
     // @ts-expect-error setValue error here. same as above
     editorRef.current.setValue(initialCode);
-    
-    let copyCode = initialCode.slice();
-    copyCode += 'return {draw, setup}';
-    const fn = new Function(copyCode);
-    const { draw, setup } = fn();
-    if (sketchRef.current) {
-      sketchRef.current.dispose();
-    }
-    sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+    runCode();
+  };
+
+  const handleChange = (val?: string) => {
+    setCode(val!);
   };
   return (
     <Grid container>
@@ -110,10 +101,11 @@ function Sandbox() {
             },
           }}
           onMount={handleMount}
+          onChange={handleChange}
           theme="vs-dark"
           width={desktop ? '50vw' : '100vw'}
           height={desktop ? '100vh' : '50vh'}
-          value={initialCode}
+          value={code}
           defaultLanguage="javascript"
           defaultValue="// some comment"
         />
