@@ -219,8 +219,8 @@ class Q5 {
   constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     // TODO: if no parent should we expect window?
     this.parent = elm || document.body;
-    this.width = elm ?  this.parent.clientWidth : window.innerWidth
-    this.height = elm ?  this.parent.clientHeight : window.innerHeight
+    this.width = elm ? this.parent.clientWidth : window.innerWidth;
+    this.height = elm ? this.parent.clientHeight : window.innerHeight;
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
@@ -896,7 +896,7 @@ class Q5 {
   dispose() {
     delete this.draw;
     delete this.setup;
-    if (this.canvas && this.parent && this.parent instanceof HTMLElement) {
+    if (this.canvas && this.parent) {
       // console.log(this.canvas, this.parent);
       // TODO: Figure out why this is not working sometimes
       // TODO: leads to no sketch being shown

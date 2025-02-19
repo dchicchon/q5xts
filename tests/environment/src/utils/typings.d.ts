@@ -1,0 +1,1 @@
+// TODO: add typings for *.module.css file types
