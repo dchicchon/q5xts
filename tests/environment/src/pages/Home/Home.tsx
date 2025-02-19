@@ -19,8 +19,8 @@ function Home() {
       <Typography sx={{ mb: 3 }} variant="h3">
         q5xts
       </Typography>
-      <Link to="/q5xts/sandbox" title="sandbox" />
-      <Link to="/q5xts/colortester" title="color tester" />
+      <Link to="/sandbox" title="sandbox" />
+      <Link to="/colortester" title="color tester" />
       <Link title="github" href="https://github.com/dchicchon/q5xts" />
     </Box>
   );

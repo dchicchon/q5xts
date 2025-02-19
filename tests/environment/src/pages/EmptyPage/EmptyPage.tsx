@@ -16,7 +16,7 @@ function EmptyPage() {
       }}
     >
       <Typography variant="h4">404 not found</Typography>
-      <Link to="/q5xts" title="Back Home" />
+      <Link to="/" title="Back Home" />
     </Box>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Route, Switch } from 'wouter';
+import { Route, Router, Switch } from 'wouter';
+// import { useHashLocation } from 'wouter/use-hash-location';
 
 import Sandbox from './pages/Sandbox';
 import ColorTester from './pages/ColorTester';
@@ -9,15 +10,17 @@ import './App.css';
 
 function App() {
   return (
-    <>
-      <Route path="/sandbox">Sandbox</Route>
+    <Router
+      base="/q5xts"
+      // hook={useHashLocation}
+    >
       <Switch>
-        <Route path="/q5xts" component={Home}></Route>
-        <Route path="/q5xts/sandbox" component={Sandbox}></Route>
-        <Route path="/q5xts/colortester" component={ColorTester}></Route>
-        <Route component={EmptyPage}></Route>
+        <Route path="/" component={Home}></Route>
+        <Route path="/sandbox" component={Sandbox}></Route>
+        <Route path="/colortester" component={ColorTester}></Route>
+        <Route path='*' component={EmptyPage}></Route>
       </Switch>
-    </>
+    </Router>
   );
 }
 

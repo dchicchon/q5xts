@@ -62,7 +62,7 @@ function Sandbox() {
       >
         <Box
           sx={{
-            p:1,
+            p: 1,
             display: 'flex',
             justifyContent: 'space-around',
             alignItems: 'center',
@@ -74,8 +74,7 @@ function Sandbox() {
               gap: 2,
             }}
           >
-            <Link color="white" title="Home" to="/q5xts" />
-         
+            <Link title="Home" to="/" />
           </Box>
           <Typography>sandbox</Typography>
           <div style={{ display: 'flex', gap: 5 }}>

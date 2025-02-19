@@ -76,7 +76,7 @@ function ColorTester() {
           left: 20,
         }}
       >
-        <Link to="/q5xts" color={fontColor} title="Home" />
+        <Link to="/" color={fontColor} title="Home" />
       </Box>
       <Box>
         <Typography
