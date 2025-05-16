@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMediaQuery } from '@mui/material';
 import Editor from '@monaco-editor/react';
 import Box from '@mui/material/Box';
@@ -17,6 +17,7 @@ import { useStore } from '../../utils/store';
 // https://stackoverflow.com/questions/63310682/how-to-load-npm-module-type-definition-in-monaco-using-webpack-and-react-create
 
 function Sandbox() {
+  const [show, setShow] = useState(true);
   const code = useStore((state) => state.code);
   const setCode = useStore((state) => state.setCode);
   const desktop = useMediaQuery('(min-width:600px)');
@@ -27,8 +28,12 @@ function Sandbox() {
   useEffect(() => {
     if (!sketchRef.current) return;
     resetCode();
-  }, []);
+    runCode();
+  });
 
+  useEffect(() => {
+    runCode();
+  }, [show]);
   const handleMount = (editor) => {
     editorRef.current = editor;
   };
@@ -43,6 +48,11 @@ function Sandbox() {
       }
       sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
     }
+  };
+
+  const toggleShow = () => {
+    // when you click this re-run the method?
+    setShow((prev) => !prev);
   };
 
   const clear = () => {
@@ -64,66 +74,71 @@ function Sandbox() {
     setCode(val!);
   };
   return (
-    <Grid container>
-      <Grid
-        size={{
-          sm: 12,
-          md: 6,
+    <>
+      <Box
+        sx={{
+          p: 1,
+          width: '100%',
+          background: '#1f2122',
+          zIndex: 100,
+          position: 'fixed',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
         }}
       >
-        <Box
-          sx={{
-            p: 1,
-            display: 'flex',
-            justifyContent: 'space-around',
-            alignItems: 'center',
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 2,
-            }}
-          >
-            <Link title="Home" to="/" />
-          </Box>
-          <Typography>sandbox</Typography>
-          <div style={{ display: 'flex', gap: 5 }}>
-            <Button onClick={runCode}>play</Button>
-            <Button onClick={clear}>clear</Button>
-            <Button onClick={resetCode}>reset</Button>
-          </div>
-        </Box>
-        <Editor
-          options={{
-            minimap: {
-              enabled: false,
-            },
-          }}
-          onMount={handleMount}
-          onChange={handleChange}
-          theme="vs-dark"
-          width={desktop ? '50vw' : '100vw'}
-          height={desktop ? '100vh' : '50vh'}
-          value={code}
-          defaultLanguage="javascript"
-          defaultValue="// some comment"
-        />
-      </Grid>
+        <Link title="Home" to="/" />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button onClick={runCode}>play</Button>
+          <Button onClick={toggleShow}>{show ? 'hide' : 'show'}</Button>
+          <Button onClick={clear}>clear</Button>
+          <Button onClick={resetCode}>reset</Button>
+        </div>
+      </Box>
       <Grid
-        sx={
-          desktop
-            ? {}
-            : {
-                height: '50vh',
-                width: '100%',
-              }
-        }
-        size={6}
-        ref={htmlRef}
-        id="sketch"
-      ></Grid>
-    </Grid>
+        sx={{
+          height: '100vh',
+        }}
+        container
+      >
+        {show && (
+          <Grid size={{
+            sm: 12
+          }}>
+            <Editor
+              options={{
+                minimap: {
+                  enabled: false,
+                },
+              }}
+              onMount={handleMount}
+              onChange={handleChange}
+              theme="vs-dark"
+              width={desktop ? '50vw' : '100vw'}
+              height={desktop ? '100vh' : '50vh'}
+              value={code}
+              defaultLanguage="javascript"
+              defaultValue="// some comment"
+            />
+          </Grid>
+        )}
+
+        <Grid
+          // sx={
+          //   desktop
+          //     ? {}
+          //     : {
+          //         height: '50vh',
+          //         width: '100%',
+          //       }
+          // }
+          size={6}
+          flexGrow={12}
+          ref={htmlRef}
+          id="sketch"
+        ></Grid>
+      </Grid>
+    </>
   );
 }
 export default Sandbox;
