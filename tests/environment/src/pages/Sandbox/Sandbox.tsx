@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMediaQuery } from '@mui/material';
 import Editor from '@monaco-editor/react';
 import Box from '@mui/material/Box';
