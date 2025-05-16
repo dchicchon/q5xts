@@ -1,6 +1,6 @@
 {
   "name": "q5xts",
-  "version": "0.0.19",
+  "version": "0.0.18",
   "type": "module",
   "homepage": "https://dchicchon.github.io/q5xts",
   "description": "A small and fast alternative (experimental) implementation of p5.js in TypeScript",

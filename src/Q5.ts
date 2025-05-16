@@ -1,5 +1,5 @@
-import { Vector } from './Vector';
-import { Color } from './Color';
+import type { Color } from './Color';
+import type { Vector } from './Vector';
 import { Lcg, Shr3, Ziggurat } from './Random';
 import { MULT, ROTY, ROTX, TRFM } from './helpers';
 
@@ -20,7 +20,7 @@ interface KeysHeld {
   [id: number]: boolean;
 }
 
-class Q5 {
+export class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
   width: number;
@@ -421,168 +421,6 @@ class Q5 {
     this.acos = Math.acos;
     this.atan = Math.atan;
     this.atan2 = Math.atan2;
-    // this.filterImpl = {};
-
-    // this.filterImpl[this.THRESHOLD] = function (data: Array<number>, thresh: number) {
-    //   if (thresh == undefined) {
-    //     thresh = 127.5;
-    //   } else {
-    //     thresh *= 255;
-    //   }
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-    //     data[i] = data[i + 1] = data[i + 2] = gray >= thresh ? 255 : 0;
-    //   }
-    // };
-    // this.filterImpl[this.GRAY] = function (data: Array<number>) {
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-    //     data[i] = data[i + 1] = data[i + 2] = gray;
-    //   }
-    // };
-    // this.filterImpl[this.OPAQUE] = function (data: Array<number>) {
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     data[i + 3] = 255;
-    //   }
-    // };
-    // this.filterImpl[this.INVERT] = function (data: Array<number>) {
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     data[i] = 255 - data[i];
-    //     data[i + 1] = 255 - data[i + 1];
-    //     data[i + 2] = 255 - data[i + 2];
-    //   }
-    // };
-    // this.filterImpl[this.POSTERIZE] = function (data: Array<number>, lvl: number) {
-    //   let lvl1 = lvl - 1;
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     data[i] = (((data[i] * lvl) >> 8) * 255) / lvl1;
-    //     data[i + 1] = (((data[i + 1] * lvl) >> 8) * 255) / lvl1;
-    //     data[i + 2] = (((data[i + 2] * lvl) >> 8) * 255) / lvl1;
-    //   }
-    // };
-
-    // this.filterImpl[this.DILATE] = (data: Array<number>) => {
-    //   this.makeTmpBuf();
-    //   this.tmpBuf.set(data);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
-    //   for (let i = 0; i < h; i++) {
-    //     for (let j = 0; j < w; j++) {
-    //       let l = 4 * Math.max(j - 1, 0);
-    //       let r = 4 * Math.min(j + 1, w - 1);
-    //       let t = 4 * Math.max(i - 1, 0) * w;
-    //       let b = 4 * Math.min(i + 1, h - 1) * w;
-    //       let oi = 4 * i * w;
-    //       let oj = 4 * j;
-    //       for (let k = 0; k < 4; k++) {
-    //         let kt = k + t;
-    //         let kb = k + b;
-    //         let ko = k + oi;
-    //         data[oi + oj + k] = Math.max(
-    //           /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
-    //           this.tmpBuf[ko + l],
-    //           this.tmpBuf[ko + oj],
-    //           this.tmpBuf[ko + r],
-    //           /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
-    //         );
-    //       }
-    //     }
-    //   }
-    // };
-
-    // this.filterImpl[this.ERODE] = (data: Array<number>) => {
-    //   this.makeTmpBuf();
-    //   this.tmpBuf.set(data);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
-    //   for (let i = 0; i < h; i++) {
-    //     for (let j = 0; j < w; j++) {
-    //       let l = 4 * Math.max(j - 1, 0);
-    //       let r = 4 * Math.min(j + 1, w - 1);
-    //       let t = 4 * Math.max(i - 1, 0) * w;
-    //       let b = 4 * Math.min(i + 1, h - 1) * w;
-    //       let oi = 4 * i * w;
-    //       let oj = 4 * j;
-    //       for (let k = 0; k < 4; k++) {
-    //         let kt = k + t;
-    //         let kb = k + b;
-    //         let ko = k + oi;
-    //         data[oi + oj + k] = Math.min(
-    //           /*tmpBuf[kt+l],*/ this.tmpBuf[kt + oj] /*this.tmpBuf[kt+r],*/,
-    //           this.tmpBuf[ko + l],
-    //           this.tmpBuf[ko + oj],
-    //           this.tmpBuf[ko + r],
-    //           /*this.tmpBuf[kb+l],*/ this.tmpBuf[kb + oj] /*this.tmpBuf[kb+r],*/
-    //         );
-    //       }
-    //     }
-    //   }
-    // };
-
-    // this.filterImpl[this.BLUR] = (data: Array<number>, rad: number) => {
-    //   rad = rad || 1;
-    //   rad = Math.floor(rad * this._pixelDensity);
-    //   this.makeTmpBuf();
-    //   this.tmpBuf.set(data);
-
-    //   let ksize = rad * 2 + 1;
-
-    //   function gauss1d(ksize: number) {
-    //     let im = new Float32Array(ksize);
-    //     let sigma = 0.3 * rad + 0.8;
-    //     let ss2 = sigma * sigma * 2;
-    //     for (let i = 0; i < ksize; i++) {
-    //       let x = i - ksize / 2;
-    //       let z = Math.exp(-(x * x) / ss2) / (2.5066282746 * sigma);
-    //       im[i] = z;
-    //     }
-    //     return im;
-    //   }
-
-    //   let kern = gauss1d(ksize);
-    //   let [w, h] = [this.ctx.canvas.width, this.ctx!.canvas.height];
-    //   for (let i = 0; i < h; i++) {
-    //     for (let j = 0; j < w; j++) {
-    //       let s0 = 0,
-    //         s1 = 0,
-    //         s2 = 0,
-    //         s3 = 0;
-    //       for (let k = 0; k < ksize; k++) {
-    //         let jk = Math.min(Math.max(j - rad + k, 0), w - 1);
-    //         let idx = 4 * (i * w + jk);
-    //         s0 += this.tmpBuf[idx] * kern[k];
-    //         s1 += this.tmpBuf[idx + 1] * kern[k];
-    //         s2 += this.tmpBuf[idx + 2] * kern[k];
-    //         s3 += this.tmpBuf[idx + 3] * kern[k];
-    //       }
-    //       let idx = 4 * (i * w + j);
-    //       data[idx] = s0;
-    //       data[idx + 1] = s1;
-    //       data[idx + 2] = s2;
-    //       data[idx + 3] = s3;
-    //     }
-    //   }
-    //   this.tmpBuf.set(data);
-    //   for (let i = 0; i < h; i++) {
-    //     for (let j = 0; j < w; j++) {
-    //       let s0 = 0,
-    //         s1 = 0,
-    //         s2 = 0,
-    //         s3 = 0;
-    //       for (let k = 0; k < ksize; k++) {
-    //         let ik = Math.min(Math.max(i - rad + k, 0), h - 1);
-    //         let idx = 4 * (ik * w + j);
-    //         s0 += this.tmpBuf[idx] * kern[k];
-    //         s1 += this.tmpBuf[idx + 1] * kern[k];
-    //         s2 += this.tmpBuf[idx + 2] * kern[k];
-    //         s3 += this.tmpBuf[idx + 3] * kern[k];
-    //       }
-    //       let idx = 4 * (i * w + j);
-    //       data[idx] = s0;
-    //       data[idx + 1] = s1;
-    //       data[idx + 2] = s2;
-    //       data[idx + 3] = s3;
-    //     }
-    //   }
-    // };
 
     this.PERLIN_YWRAPB = 4;
     this.PERLIN_YWRAP = 1 << this.PERLIN_YWRAPB;
@@ -678,17 +516,15 @@ class Q5 {
     });
 
     this.canvas.ontouchstart = (event) => {
-      // this.touches = this.getTouchInfo()
-      // based on the length we'll go down the list?
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches.item(i);
         this.touches.push(this.getTouchInfo(touch));
       }
-      if (this.isTouchUnaware()) {
+      if (this.isTouchAware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
-        this.mouseX = this.touches[0].x;
-        this.mouseY = this.touches[0].y;
+        this.mouseX = this.touches[this.touches.length - 1].x;
+        this.mouseY = this.touches[this.touches.length - 1].y;
         this.mouseIsPressed = true;
         this.mouseButton = this.LEFT;
         if (!this.mousePressed) {
@@ -704,11 +540,11 @@ class Q5 {
         const touch = event.touches.item(i);
         this.touches.push(this.getTouchInfo(touch));
       }
-      if (this.isTouchUnaware()) {
+      if (this.isTouchAware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
-        this.mouseX = this.touches[0].x;
-        this.mouseY = this.touches[0].y;
+        this.mouseX = this.touches[this.touches.length - 1].x;
+        this.mouseY = this.touches[this.touches.length - 1].y;
         this.mouseIsPressed = true;
         this.mouseButton = this.LEFT;
         if (!this.mouseDragged) {
@@ -719,18 +555,18 @@ class Q5 {
         event.preventDefault();
       }
     };
-
     this.canvas.ontouchend = this.canvas.ontouchcancel = (event) => {
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches.item(i);
         this.touches.push(this.getTouchInfo(touch));
       }
-      if (this.isTouchUnaware()) {
+      if (this.isTouchAware()) {
         this.pmouseX = this.mouseX;
         this.pmouseY = this.mouseY;
-        this.mouseX = this.touches[0].x;
-        this.mouseY = this.touches[0].y;
+        this.mouseX = this.touches[this.touches.length - 1].x;
+        this.mouseY = this.touches[this.touches.length - 1].y;
         this.mouseIsPressed = false;
+        this.touches = [];
         if (!this.mouseReleased) {
           event.preventDefault();
         }
@@ -996,9 +832,6 @@ class Q5 {
   radians(x: number) {
     return (x * Math.PI) / 180;
   }
-  createVector(x: number, y: number, z?: number) {
-    return new Vector(x, y, z);
-  }
 
   curvePoint(a: number, b: number, c: number, d: number, t: number) {
     const t3 = t * t * t,
@@ -1041,103 +874,100 @@ class Q5 {
     this._style.colorMode = mode;
   }
 
+  // also dont support hsv for now
+  // Dont create a color like this, do it via the color class
   // TODO: Likely HSV calculations may be wrong. tofix
-  color(r: number | Color, g: number, b: number, a: number) {
-    if (r instanceof Color) {
-      return r;
-    }
-    if (this._style.colorMode === this.RGB) {
-      if (arguments.length === 1) {
-        return new Color(r, r, r, 1);
-      } else if (arguments.length === 2) {
-        return new Color(r, r, r, g / 255);
-      } else if (arguments.length === 3) {
-        return new Color(r, g, b, 1);
-      } else if (arguments.length === 4) {
-        return new Color(r, g, b, a / 255);
-      }
-    } else {
-      if (arguments.length == 1) {
-        const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
-        return new Color(newR, newG, newB, 1);
-      } else if (arguments.length === 2) {
-        const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
-        return new Color(newR, newG, newB, g / 255);
-      } else if (arguments.length === 3) {
-        const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
-        return new Color(newR, newG, newB, 1);
-      } else if (arguments.length === 4) {
-        const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
-        return new Color(newR, newG, newB, a / 255);
-      }
-    }
-  }
-  red(c: Color) {
-    return c._r;
-  }
-  green(c: Color) {
-    return c._g;
-  }
-  blue(c: Color) {
-    return c._b;
-  }
-  alpha(c: Color) {
-    return c._a * 255;
-  }
+  // color(r: number | Color, g: number, b: number, a: number) {
+  //   if (typeof r !== 'number') {
+  //     return r;
+  //   }
+  //   if (this._style.colorMode === this.RGB) {
+  //     if (arguments.length === 1) {
+  //       return new Color(r, r, r, 1);
+  //     } else if (arguments.length === 2) {
+  //       return new Color(r, r, r, g / 255);
+  //     } else if (arguments.length === 3) {
+  //       return new Color(r, g, b, 1);
+  //     } else if (arguments.length === 4) {
+  //       return new Color(r, g, b, a / 255);
+  //     }
+  //   } else {
+  //     if (arguments.length == 1) {
+  //       const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
+  //       return new Color(newR, newG, newB, 1);
+  //     } else if (arguments.length === 2) {
+  //       const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
+  //       return new Color(newR, newG, newB, g / 255);
+  //     } else if (arguments.length === 3) {
+  //       const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
+  //       return new Color(newR, newG, newB, 1);
+  //     } else if (arguments.length === 4) {
+  //       const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
+  //       return new Color(newR, newG, newB, a / 255);
+  //     }
+  //   }
+  // }
+  // red(c: Color) {
+  //   return c._r;
+  // }
+  // green(c: Color) {
+  //   return c._g;
+  // }
+  // blue(c: Color) {
+  //   return c._b;
+  // }
+  // alpha(c: Color) {
+  //   return c._a * 255;
+  // }
 
-  hue(c: Color) {
-    c._inferHSV();
-    return c._h;
-  }
-  saturation(c: Color) {
-    c._inferHSV();
-    return c._s;
-  }
-  brightness(c: Color) {
-    c._inferHSV();
-    return c._v;
-  }
-  lightness(c: Color) {
-    return ((0.2126 * c._r + 0.7152 * c._g + 0.0722 * c._b) * 100) / 255;
-  }
+  // hue(c: Color) {
+  //   c._inferHSV();
+  //   return c._h;
+  // }
+  // saturation(c: Color) {
+  //   c._inferHSV();
+  //   return c._s;
+  // }
+  // brightness(c: Color) {
+  //   c._inferHSV();
+  //   return c._v;
+  // }
+  // lightness(c: Color) {
+  //   return ((0.2126 * c._r + 0.7152 * c._g + 0.0722 * c._b) * 100) / 255;
+  // }
 
-  lerpColor(a: Color, b: Color, t: number) {
-    if (this._style.colorMode == this.RGB) {
-      return new Color(
-        this.constrain(this.lerp(a._r, b._r, t), 0, 255),
-        this.constrain(this.lerp(a._g, b._g, t), 0, 255),
-        this.constrain(this.lerp(a._b, b._b, t), 0, 255),
-        this.constrain(this.lerp(a._a, b._a, t), 0, 1)
-      );
-    } else {
-      a._inferHSV();
-      b._inferHSV();
-      return new Color(
-        this.constrain(this.lerpHue(a._h, b._h, t), 0, 360),
-        this.constrain(this.lerp(a._s, b._s, t), 0, 100),
-        this.constrain(this.lerp(a._v, b._v, t), 0, 100),
-        this.constrain(this.lerp(a._a, b._a, t), 0, 1)
-      );
-    }
-  }
+  // lerpColor(a: Color, b: Color, t: number) {
+  //   if (this._style.colorMode == this.RGB) {
+  //     return new Color(
+  //       this.constrain(this.lerp(a._r, b._r, t), 0, 255),
+  //       this.constrain(this.lerp(a._g, b._g, t), 0, 255),
+  //       this.constrain(this.lerp(a._b, b._b, t), 0, 255),
+  //       this.constrain(this.lerp(a._a, b._a, t), 0, 1)
+  //     );
+  //   } else {
+  //     a._inferHSV();
+  //     b._inferHSV();
+  //     return new Color(
+  //       this.constrain(this.lerpHue(a._h, b._h, t), 0, 360),
+  //       this.constrain(this.lerp(a._s, b._s, t), 0, 100),
+  //       this.constrain(this.lerp(a._v, b._v, t), 0, 100),
+  //       this.constrain(this.lerp(a._a, b._a, t), 0, 1)
+  //     );
+  //   }
+  // }
   strokeWeight(n: number) {
     this._style.noStroke = false;
     this.ctx!.lineWidth = n;
   }
 
-  stroke(r: string | number | Color, g?: number, b?: number, a?: number) {
+  // to do a stroke, it should be a string or a new color. no numbers?. if you're
+  // doing number just do a color then
+  stroke(r: string | Color) {
     this._style.noStroke = false;
     if (typeof r == 'string') {
       this.ctx!.strokeStyle = r;
-    } else if (r instanceof Color) {
-      this.ctx!.strokeStyle = r.toString();
     } else {
-      const col = new Color(r, g!, b!, a!);
-      if (col!._a <= 0) {
-        this._style.noStroke = true;
-      } else {
-        this.ctx!.strokeStyle = col.toString();
-      }
+      this.ctx!.strokeStyle = r.toString();
     }
   }
 
@@ -1145,19 +975,12 @@ class Q5 {
     this._style.noStroke = true;
   }
 
-  fill(r: string | number | Color, g?: number, b?: number, a?: number) {
+  fill(r: string | Color) {
     this._style.noFill = false;
     if (typeof r == 'string') {
       this.ctx!.fillStyle = r;
-    } else if (r instanceof Color) {
-      this.ctx!.fillStyle = r.toString();
     } else {
-      const col = new Color(r, g!, b!, a!);
-      if (col!._a <= 0) {
-        this._style.noFill = true;
-      } else {
-        this.ctx!.fillStyle = r.toString();
-      }
+      this.ctx!.fillStyle = r.toString();
     }
   }
 
@@ -1366,11 +1189,11 @@ class Q5 {
   }
 
   point(x: Vector | number, y?: number) {
-    if (x instanceof Vector) {
+    if (typeof x !== 'number' && x.x && x.y) {
       y = x.y;
       x = x.x;
     }
-    if (!y) return;
+    if (typeof x !== 'number' || y === undefined) return;
     this.ctx!.beginPath();
     this.ctx!.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
     this.ctx!.stroke();
@@ -1477,15 +1300,15 @@ class Q5 {
   vertex(x: number | Vector, y: number) {
     this.clearBuff();
     if (this.firstVertex) {
-      if (x instanceof Vector) {
+      if (typeof x !== 'number' && x.x && x.y) {
         this.ctx!.moveTo(x.x, x.y);
-      } else {
+      } else if (typeof x === 'number') {
         this.ctx!.moveTo(x, y);
       }
     } else {
-      if (x instanceof Vector) {
+      if (typeof x !== 'number' && x.x && x.y) {
         this.ctx!.lineTo(x.x, x.y);
-      } else {
+      } else if (typeof x === 'number') {
         this.ctx!.lineTo(x, y);
       }
     }
@@ -1876,7 +1699,6 @@ class Q5 {
       this.tmpCt2.canvas.height = h;
     }
   }
-
   nativeFilter(filtstr: string) {
     this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
     this.tmpCtx.filter = filtstr;
@@ -1887,7 +1709,6 @@ class Q5 {
     this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
     this.ctx!.restore();
   }
-
   resize(w: number, h: number) {
     this.makeTmpCtx();
     this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
@@ -1908,83 +1729,46 @@ class Q5 {
     this.ctx!.restore();
   }
 
-  get(x: number, y: number, w?: number, h?: number) {
-    if (x != undefined && w == undefined) {
-      let c = this.ctx!.getImageData(x, y, 1, 1).data;
-      return new Color(c[0], c[1], c[2], c[3] / 255);
-    }
-    x = x || 0;
-    y = y || 0;
-    w = w || this.width;
-    h = h || this.height;
-    let g = this.createGraphics(w, h);
-    g.pixelDensity(this._pixelDensity);
-    let imgData = this.ctx!.getImageData(
-      x * this._pixelDensity,
-      y * this._pixelDensity,
-      w * this._pixelDensity,
-      h * this._pixelDensity
-    );
-    g.canvas.getContext('2d')?.putImageData(imgData, 0, 0);
-    return g;
-  }
+  // tinted(...args: Array<any>) {
+  //   const [r, g, b, a] = args;
+  //   let col = this.color(r, g, b, a);
+  //   let alpha = col?._a;
+  //   col!._a = 1;
+  //   this.makeTmpCtx();
+  //   this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+  //   this.tmpCtx.fillStyle = col;
+  //   this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+  //   this.tmpCtx.globalCompositeOperation = 'multiply';
+  //   this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
+  //   this.tmpCtx.globalCompositeOperation = 'source-over';
 
-  set(x: number, y: number, c: Color) {
-    if (c.MAGIC == this.MAGIC) {
-      let old = this._tint;
-      this._tint = null;
-      this.image(c, x, y);
-      this._tint = old;
-      return;
-    }
-    let idx =
-      4 * (y * this._pixelDensity * this.ctx!.canvas.width + x * this._pixelDensity);
-    this.pixels[idx] = c._r;
-    this.pixels[idx + 1] = c._g;
-    this.pixels[idx + 2] = c._b;
-    this.pixels[idx + 3] = c._a * 255;
-  }
+  //   this.ctx!.save();
+  //   this.ctx!.resetTransform();
+  //   let old = this.ctx!.globalCompositeOperation;
+  //   this.ctx!.globalCompositeOperation = 'source-in';
+  //   this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+  //   this.ctx!.globalCompositeOperation = old;
+  //   this.ctx!.restore();
 
-  tinted(...args: Array<any>) {
-    const [r, g, b, a] = args;
-    let col = this.color(r, g, b, a);
-    let alpha = col?._a;
-    col!._a = 1;
-    this.makeTmpCtx();
-    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-    this.tmpCtx.fillStyle = col;
-    this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-    this.tmpCtx.globalCompositeOperation = 'multiply';
-    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
-    this.tmpCtx.globalCompositeOperation = 'source-over';
+  //   this.tmpCtx.globalAlpha = alpha;
+  //   this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+  //   this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
+  //   this.tmpCtx.globalAlpha = 1;
 
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    let old = this.ctx!.globalCompositeOperation;
-    this.ctx!.globalCompositeOperation = 'source-in';
-    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx!.globalCompositeOperation = old;
-    this.ctx!.restore();
+  //   this.ctx!.save();
+  //   this.ctx!.resetTransform();
+  //   this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
+  //   this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
+  //   this.ctx!.restore();
+  // }
 
-    this.tmpCtx.globalAlpha = alpha;
-    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
-    this.tmpCtx.globalAlpha = 1;
-
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
-    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx!.restore();
-  }
-
-  tint(...args: Array<any>) {
-    const [r, g, b, a] = args;
-    const color = this.color(r, g, b, a);
-    if (color) {
-      this._tint = color;
-    }
-  }
+  // tint(...args: Array<any>) {
+  //   const [r, g, b, a] = args;
+  //   const color = this.color(r, g, b, a);
+  //   if (color) {
+  //     this._tint = color;
+  //   }
+  // }
 
   noTint() {
     this._tint = null;
@@ -2215,18 +1999,14 @@ class Q5 {
     this.rng1.setSeed(seed);
   }
 
-  random(a?: number | string, b?: number) {
+  random(a?: number, b?: number): number {
     if (a == undefined) {
       return this.rng1.rand();
     }
-    if (typeof a == 'number') {
-      if (b) {
-        return this.rng1.rand() * (b - a) + a;
-      } else {
-        return this.rng1.rand() * a;
-      }
+    if (b) {
+      return this.rng1.rand() * (b - a) + a;
     } else {
-      return a[~~(a.length * this.rng1.rand())];
+      return this.rng1.rand() * a;
     }
   }
 
@@ -2360,7 +2140,7 @@ class Q5 {
     };
   }
 
-  isTouchUnaware() {
+  isTouchAware() {
     return this.touchStarted && this.touchMoved && this.touchEnded;
   }
 
@@ -2390,5 +2170,3 @@ class Q5 {
     }
   }
 }
-
-export { Q5, Vector, Color };

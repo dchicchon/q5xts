@@ -9,6 +9,7 @@ export class Color {
   _v: number;
   _hsvInferred: boolean;
 
+  // should be allowed to create a color on your own without Q5
   constructor(r: number, g: number, b: number, a: number) {
     this.MAGIC = 0xc010a;
     this._r = r;
