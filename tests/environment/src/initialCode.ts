@@ -20,6 +20,10 @@ function setup() {
     this.frameRate(60)
     this.pixelDensity(window.devicePixelRatio)
     this.background('#ffffe1')
+    // enable touch controls
+    this.touchStarted = () => {}
+    this.touchMoved   = () => {}
+    this.touchEnded   = () => {}
 }
 
 function draw() {
@@ -117,4 +121,4 @@ class Particle {
         }
     }
 }
-`
+`;
