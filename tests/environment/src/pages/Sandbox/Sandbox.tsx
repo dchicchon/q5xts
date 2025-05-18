@@ -29,11 +29,12 @@ function Sandbox() {
     if (!sketchRef.current) return;
     resetCode();
     runCode();
-  });
+  },[]);
 
   useEffect(() => {
     runCode();
   }, [show]);
+  
   const handleMount = (editor) => {
     editorRef.current = editor;
   };
