@@ -24,7 +24,7 @@ export class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
   width: number;
-  ctx: CanvasRenderingContext2D | null;
+  ctx: CanvasRenderingContext2D;
   MAGIC: number;
   RGB: number;
   HSV: number;
@@ -215,6 +215,8 @@ export class Q5 {
   touchMoved?: Function | null;
   touchEnded?: Function | null;
 
+  // is it worth doing all of this in the constructor?
+  // maybe Q5 needs to be split up here?
   // @ts-expect-error scope is never read
   constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     // TODO: if no parent should we expect window?
@@ -224,7 +226,7 @@ export class Q5 {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = this.canvas.getContext('2d')!;
     this.parent.appendChild(this.canvas);
     this.MAGIC = 0x9a0ce55;
 
@@ -826,13 +828,13 @@ export class Q5 {
   fract(x: number) {
     return x - Math.floor(x);
   }
+
   degrees(x: number) {
     return (x * 180) / Math.PI;
   }
   radians(x: number) {
     return (x * Math.PI) / 180;
   }
-
   curvePoint(a: number, b: number, c: number, d: number, t: number) {
     const t3 = t * t * t,
       t2 = t * t,
@@ -870,104 +872,22 @@ export class Q5 {
       3 * a * Math.pow(adjustedT, 2)
     );
   }
+
   colorMode(mode: number) {
     this._style.colorMode = mode;
   }
 
-  // also dont support hsv for now
-  // Dont create a color like this, do it via the color class
-  // TODO: Likely HSV calculations may be wrong. tofix
-  // color(r: number | Color, g: number, b: number, a: number) {
-  //   if (typeof r !== 'number') {
-  //     return r;
-  //   }
-  //   if (this._style.colorMode === this.RGB) {
-  //     if (arguments.length === 1) {
-  //       return new Color(r, r, r, 1);
-  //     } else if (arguments.length === 2) {
-  //       return new Color(r, r, r, g / 255);
-  //     } else if (arguments.length === 3) {
-  //       return new Color(r, g, b, 1);
-  //     } else if (arguments.length === 4) {
-  //       return new Color(r, g, b, a / 255);
-  //     }
-  //   } else {
-  //     if (arguments.length == 1) {
-  //       const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
-  //       return new Color(newR, newG, newB, 1);
-  //     } else if (arguments.length === 2) {
-  //       const [newR, newG, newB] = Color.hsv2rgb(0, 0, r / 100);
-  //       return new Color(newR, newG, newB, g / 255);
-  //     } else if (arguments.length === 3) {
-  //       const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
-  //       return new Color(newR, newG, newB, 1);
-  //     } else if (arguments.length === 4) {
-  //       const [newR, newG, newB] = Color.hsv2rgb(r, g / 100, b / 100);
-  //       return new Color(newR, newG, newB, a / 255);
-  //     }
-  //   }
-  // }
-  // red(c: Color) {
-  //   return c._r;
-  // }
-  // green(c: Color) {
-  //   return c._g;
-  // }
-  // blue(c: Color) {
-  //   return c._b;
-  // }
-  // alpha(c: Color) {
-  //   return c._a * 255;
-  // }
-
-  // hue(c: Color) {
-  //   c._inferHSV();
-  //   return c._h;
-  // }
-  // saturation(c: Color) {
-  //   c._inferHSV();
-  //   return c._s;
-  // }
-  // brightness(c: Color) {
-  //   c._inferHSV();
-  //   return c._v;
-  // }
-  // lightness(c: Color) {
-  //   return ((0.2126 * c._r + 0.7152 * c._g + 0.0722 * c._b) * 100) / 255;
-  // }
-
-  // lerpColor(a: Color, b: Color, t: number) {
-  //   if (this._style.colorMode == this.RGB) {
-  //     return new Color(
-  //       this.constrain(this.lerp(a._r, b._r, t), 0, 255),
-  //       this.constrain(this.lerp(a._g, b._g, t), 0, 255),
-  //       this.constrain(this.lerp(a._b, b._b, t), 0, 255),
-  //       this.constrain(this.lerp(a._a, b._a, t), 0, 1)
-  //     );
-  //   } else {
-  //     a._inferHSV();
-  //     b._inferHSV();
-  //     return new Color(
-  //       this.constrain(this.lerpHue(a._h, b._h, t), 0, 360),
-  //       this.constrain(this.lerp(a._s, b._s, t), 0, 100),
-  //       this.constrain(this.lerp(a._v, b._v, t), 0, 100),
-  //       this.constrain(this.lerp(a._a, b._a, t), 0, 1)
-  //     );
-  //   }
-  // }
   strokeWeight(n: number) {
     this._style.noStroke = false;
-    this.ctx!.lineWidth = n;
+    this.ctx.lineWidth = n;
   }
 
-  // to do a stroke, it should be a string or a new color. no numbers?. if you're
-  // doing number just do a color then
   stroke(r: string | Color) {
     this._style.noStroke = false;
     if (typeof r == 'string') {
-      this.ctx!.strokeStyle = r;
+      this.ctx.strokeStyle = r;
     } else {
-      this.ctx!.strokeStyle = r.toString();
+      this.ctx.strokeStyle = r.toString();
     }
   }
 
@@ -978,9 +898,9 @@ export class Q5 {
   fill(r: string | Color) {
     this._style.noFill = false;
     if (typeof r == 'string') {
-      this.ctx!.fillStyle = r;
+      this.ctx.fillStyle = r;
     } else {
-      this.ctx!.fillStyle = r.toString();
+      this.ctx.fillStyle = r.toString();
     }
   }
 
@@ -989,15 +909,15 @@ export class Q5 {
   }
 
   blendMode(x: GlobalCompositeOperation) {
-    this.ctx!.globalCompositeOperation = x;
+    this.ctx.globalCompositeOperation = x;
   }
 
   strokeCap(x: CanvasLineCap) {
-    this.ctx!.lineCap = x;
+    this.ctx.lineCap = x;
   }
 
   strokeJoin(x: CanvasLineJoin) {
-    this.ctx!.lineJoin = x;
+    this.ctx.lineJoin = x;
   }
 
   ellipseMode(x: string) {
@@ -1023,10 +943,10 @@ export class Q5 {
   }
 
   defaultStyle() {
-    this.ctx!.fillStyle = 'white';
-    this.ctx!.strokeStyle = 'black';
-    this.ctx!.lineCap = 'round';
-    this.ctx!.lineJoin = 'miter';
+    this.ctx.fillStyle = 'white';
+    this.ctx.strokeStyle = 'black';
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'miter';
   }
 
   //================================================================
@@ -1034,34 +954,32 @@ export class Q5 {
   //================================================================
 
   clear() {
-    this.ctx!.clearRect(0, 0, this.width, this.height);
+    this.ctx.clearRect(0, 0, this.width, this.height);
   }
 
-  background(...args: Array<any>) {
+  background(color: Color | string) {
+    // related to making background image
     if (arguments[0] && arguments[0].MAGIC == this.MAGIC) {
       return this.image(arguments[0], 0, 0, this.width, this.height);
     }
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    this.ctx!.scale(this._pixelDensity, this._pixelDensity);
-    if (typeof arguments[0] == 'string') {
-      this.ctx!.fillStyle = args[0];
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.scale(this._pixelDensity, this._pixelDensity);
+    if (typeof color == 'string') {
+      this.ctx.fillStyle = color;
     } else {
-      const [r, g, b, a] = args;
-      // @ts-expect-error Type 'Color | null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
-      // Type 'null' is not assignable to type 'string | CanvasGradient | CanvasPattern'.
-      this.ctx!.fillStyle = this.color(r, g, b, a);
+      this.ctx.fillStyle = color.toString();
     }
-    this.ctx!.fillRect(0, 0, this.width, this.height);
-    this.ctx!.restore();
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.restore();
   }
 
   line(x0: number, y0: number, x1: number, y1: number) {
     if (!this._style.noStroke) {
-      this.ctx!.beginPath();
-      this.ctx!.moveTo(x0, y0);
-      this.ctx!.lineTo(x1, y1);
-      this.ctx!.stroke();
+      this.ctx.beginPath();
+      this.ctx.moveTo(x0, y0);
+      this.ctx.lineTo(x1, y1);
+      this.ctx.stroke();
     }
   }
 
@@ -1103,22 +1021,22 @@ export class Q5 {
     }
     let lo = Q5.norm2PI(start);
     let hi = Q5.norm2PI(stop);
-    this.ctx!.beginPath();
+    this.ctx.beginPath();
     for (let i = 0; i < detail + 1; i++) {
       let t = i / detail;
       let a = this.lerp(lo, hi, t);
       let dx = (Math.cos(a) * w) / 2;
       let dy = (Math.sin(a) * h) / 2;
-      this.ctx![i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
+      this.ctx[i ? 'lineTo' : 'moveTo'](x + dx, y + dy);
     }
     if (mode == this.CHORD) {
-      this.ctx!.closePath();
+      this.ctx.closePath();
     } else if (mode == this.PIE) {
-      this.ctx!.lineTo(x, y);
-      this.ctx!.closePath();
+      this.ctx.lineTo(x, y);
+      this.ctx.closePath();
     }
-    if (!this._style.noFill) this.ctx!.fill();
-    if (!this._style.noStroke) this.ctx!.stroke();
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
   }
 
   arc(
@@ -1159,10 +1077,10 @@ export class Q5 {
     if (this._style.noFill && this._style.noStroke) {
       return;
     }
-    this.ctx!.beginPath();
-    this.ctx!.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
-    if (!this._style.noFill) this.ctx!.fill();
-    if (!this._style.noStroke) this.ctx!.stroke();
+    this.ctx.beginPath();
+    this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
   }
 
   // TODO: TOFIX
@@ -1194,17 +1112,17 @@ export class Q5 {
       x = x.x;
     }
     if (typeof x !== 'number' || y === undefined) return;
-    this.ctx!.beginPath();
-    this.ctx!.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
-    this.ctx!.stroke();
+    this.ctx.beginPath();
+    this.ctx.ellipse(x, y, 0.4, 0.4, 0, 0, Math.PI * 2);
+    this.ctx.stroke();
   }
 
   rectImpl(x: number, y: number, w: number, h: number): void {
     if (!this._style.noFill) {
-      this.ctx!.fillRect(x, y, w, h);
+      this.ctx.fillRect(x, y, w, h);
     }
     if (!this._style.noStroke) {
-      this.ctx!.strokeRect(x, y, w, h);
+      this.ctx.strokeRect(x, y, w, h);
     }
   }
 
@@ -1232,15 +1150,15 @@ export class Q5 {
     tr = Math.min(hh, tr);
     bl = Math.min(hh, bl!);
     br = Math.min(hh, br!);
-    this.ctx!.beginPath();
-    this.ctx!.moveTo(x + tl, y);
-    this.ctx!.arcTo(x + w, y, x + w, y + h, tr);
-    this.ctx!.arcTo(x + w, y + h, x, y + h, br);
-    this.ctx!.arcTo(x, y + h, x, y, bl);
-    this.ctx!.arcTo(x, y, x + w, y, tl);
-    this.ctx!.closePath();
-    if (!this._style.noFill) this.ctx!.fill();
-    if (!this._style.noStroke) this.ctx!.stroke();
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + tl, y);
+    this.ctx.arcTo(x + w, y, x + w, y + h, tr);
+    this.ctx.arcTo(x + w, y + h, x, y + h, br);
+    this.ctx.arcTo(x, y + h, x, y, bl);
+    this.ctx.arcTo(x, y, x + w, y, tl);
+    this.ctx.closePath();
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
   }
 
   // TODO: TOFIX
@@ -1284,11 +1202,11 @@ export class Q5 {
 
   beginShape() {
     this.clearBuff();
-    this.ctx!.beginPath();
+    this.ctx.beginPath();
     this.firstVertex = true;
   }
   beginContour() {
-    this.ctx!.closePath();
+    this.ctx.closePath();
     this.clearBuff();
     this.firstVertex = true;
   }
@@ -1301,15 +1219,15 @@ export class Q5 {
     this.clearBuff();
     if (this.firstVertex) {
       if (typeof x !== 'number' && x.x && x.y) {
-        this.ctx!.moveTo(x.x, x.y);
+        this.ctx.moveTo(x.x, x.y);
       } else if (typeof x === 'number') {
-        this.ctx!.moveTo(x, y);
+        this.ctx.moveTo(x, y);
       }
     } else {
       if (typeof x !== 'number' && x.x && x.y) {
-        this.ctx!.lineTo(x.x, x.y);
+        this.ctx.lineTo(x.x, x.y);
       } else if (typeof x === 'number') {
-        this.ctx!.lineTo(x, y);
+        this.ctx.lineTo(x, y);
       }
     }
     this.firstVertex = false;
@@ -1324,12 +1242,12 @@ export class Q5 {
     y: number
   ) {
     this.clearBuff();
-    this.ctx!.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+    this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
   }
 
   quadraticVertex(cp1x: number, cp1y: number, x: number, y: number) {
     this.clearBuff();
-    this.ctx!.quadraticCurveTo(cp1x, cp1y, x, y);
+    this.ctx.quadraticCurveTo(cp1x, cp1y, x, y);
   }
 
   bezier(
@@ -1377,16 +1295,16 @@ export class Q5 {
   endShape(close?: number) {
     this.clearBuff();
     if (close) {
-      this.ctx!.closePath();
+      this.ctx.closePath();
     }
-    if (!this._style.noFill) this.ctx!.fill();
-    if (!this._style.noStroke) this.ctx!.stroke();
+    if (!this._style.noFill) this.ctx.fill();
+    if (!this._style.noStroke) this.ctx.stroke();
     if (this._style.noFill && this._style.noStroke) {
       // eh.
-      this.ctx!.save();
-      this.ctx!.fillStyle = 'none';
-      this.ctx!.fill();
-      this.ctx!.restore();
+      this.ctx.save();
+      this.ctx.fillStyle = 'none';
+      this.ctx.fill();
+      this.ctx.restore();
     }
   }
 
@@ -1489,10 +1407,10 @@ export class Q5 {
     for (let i = 0; i < pts.length; i++) {
       if (this.firstVertex) {
         //@ts-expect-errorA spread argument must either have a tuple type or be passed to a rest parameter.
-        this.ctx!.moveTo(...pts[i]);
+        this.ctx.moveTo(...pts[i]);
       } else {
         //@ts-expect-errorA spread argument must either have a tuple type or be passed to a rest parameter.
-        this.ctx!.lineTo(...pts[i]);
+        this.ctx.lineTo(...pts[i]);
       }
       this.firstVertex = false;
     }
@@ -1520,49 +1438,49 @@ export class Q5 {
   // DRAWING MATRIX
   //================================================================
   translate(x: number, y: number) {
-    this.ctx!.translate(x, y);
+    this.ctx.translate(x, y);
   }
   rotate(r: number) {
-    this.ctx!.rotate(r);
+    this.ctx.rotate(r);
   }
   scale(x: number, y?: number) {
     if (y == undefined) {
       y = x;
     }
-    this.ctx!.scale(x, y);
+    this.ctx.scale(x, y);
   }
   applyMatrix(a: number, b: number, c: number, d: number, e: number, f: number) {
-    this.ctx!.transform(a, b, c, d, e, f);
+    this.ctx.transform(a, b, c, d, e, f);
   }
   shearX(ang: number) {
-    this.ctx!.transform(1, 0, Math.tan(ang), 1, 0, 0);
+    this.ctx.transform(1, 0, Math.tan(ang), 1, 0, 0);
   }
   shearY(ang: number) {
-    this.ctx!.transform(1, Math.tan(ang), 0, 1, 0, 0);
+    this.ctx.transform(1, Math.tan(ang), 0, 1, 0, 0);
   }
 
   resetMatrix() {
-    this.ctx!.resetTransform();
-    this.ctx!.scale(this._pixelDensity, this._pixelDensity);
+    this.ctx.resetTransform();
+    this.ctx.scale(this._pixelDensity, this._pixelDensity);
   }
 
   pushMatrix() {
     this._styleCache.push({ ...this._style });
     this._style = this._styleCache[this._styleCache.length - 1];
-    this.ctx!.save();
+    this.ctx.save();
   }
 
   push() {
     this._styleCache.push({ ...this._style });
     this._style = this._styleCache[this._styleCache.length - 1];
-    this.ctx!.save();
+    this.ctx.save();
   }
 
   popMatrix() {
     if (this._styleCache.length - 1) {
       this._styleCache.pop();
       this._style = this._styleCache[this._styleCache.length - 1];
-      this.ctx!.restore();
+      this.ctx.restore();
     }
   }
 
@@ -1570,7 +1488,7 @@ export class Q5 {
     if (this._styleCache.length - 1) {
       this._styleCache.pop();
       this._style = this._styleCache[this._styleCache.length - 1];
-      this.ctx!.restore();
+      this.ctx.restore();
     }
   }
 
@@ -1579,7 +1497,7 @@ export class Q5 {
   //================================================================
   image(
     //@ts-expect-error img is set to any type
-    img,
+    img: Image,
     dx: number,
     dy: number,
     dWidth?: number,
@@ -1609,15 +1527,15 @@ export class Q5 {
     }
     if (!dWidth) {
       if (img.MAGIC == this.MAGIC || img.width) {
-        this.ctx!.drawImage(drawable, dx, dy, img.width, img.height);
+        this.ctx.drawImage(drawable, dx, dy, img.width, img.height);
       } else {
-        this.ctx!.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
+        this.ctx.drawImage(drawable, dx, dy, img.videoWidth, img.videoHeight);
       }
       reset();
       return;
     }
     if (!sx && dHeight) {
-      this.ctx!.drawImage(drawable, dx, dy, dWidth, dHeight);
+      this.ctx.drawImage(drawable, dx, dy, dWidth, dHeight);
       reset();
       return;
     }
@@ -1628,18 +1546,18 @@ export class Q5 {
       sHeight = drawable.height;
     }
     if (!sx || !sy || !sWidth || !sHeight || !dHeight) return;
-    this.ctx!.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+    this.ctx.drawImage(drawable, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
     reset();
   }
 
   loadPixels() {
-    this.imgData = this.ctx!.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    this.imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
     this.pixels = this.imgData.data;
   }
 
   updatePixels() {
     if (this.imgData != null) {
-      this.ctx!.putImageData(this.imgData, 0, 0);
+      this.ctx.putImageData(this.imgData, 0, 0);
     }
   }
 
@@ -1666,7 +1584,7 @@ export class Q5 {
   }
 
   makeTmpBuf() {
-    let l = this.ctx!.canvas.width * this.ctx!.canvas.height * 4;
+    let l = this.ctx.canvas.width * this.ctx.canvas.height * 4;
     if (this.tmpBuf == null || l != this.tmpBuf.length) {
       this.tmpBuf = new Uint8ClampedArray(l);
     }
@@ -1677,8 +1595,8 @@ export class Q5 {
       // document.body.appendChild(tmpCtx.canvas)
     }
     if (w == undefined) {
-      w = this.ctx!.canvas.width;
-      h = this.ctx!.canvas.height;
+      w = this.ctx.canvas.width;
+      h = this.ctx.canvas.height;
     }
     if (this.tmpCtx.canvas.width != w || this.tmpCtx.canvas.height != h) {
       this.tmpCtx.canvas.width = w;
@@ -1691,8 +1609,8 @@ export class Q5 {
       // document.body.appendChild(this.tmpCt2.canvas)
     }
     if (w == undefined) {
-      w = this.ctx!.canvas.width;
-      h = this.ctx!.canvas.height;
+      w = this.ctx.canvas.width;
+      h = this.ctx.canvas.height;
     }
     if (this.tmpCt2.canvas.width != w || this.tmpCt2.canvas.height != h) {
       this.tmpCt2.canvas.width = w;
@@ -1702,86 +1620,81 @@ export class Q5 {
   nativeFilter(filtstr: string) {
     this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
     this.tmpCtx.filter = filtstr;
-    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
-    this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-    this.ctx!.restore();
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.restore();
   }
   resize(w: number, h: number) {
     this.makeTmpCtx();
-    this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
     this.width = w;
     this.height = h;
-    this.ctx!.canvas.width = w * this._pixelDensity;
-    this.ctx!.canvas.height = h * this._pixelDensity;
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
-    this.ctx!.drawImage(
+    this.ctx.canvas.width = w * this._pixelDensity;
+    this.ctx.canvas.height = h * this._pixelDensity;
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(
       this.tmpCtx.canvas,
       0,
       0,
-      this.ctx!.canvas.width,
-      this.ctx!.canvas.height
+      this.ctx.canvas.width,
+      this.ctx.canvas.height
     );
-    this.ctx!.restore();
+    this.ctx.restore();
   }
 
-  // tinted(...args: Array<any>) {
-  //   const [r, g, b, a] = args;
-  //   let col = this.color(r, g, b, a);
-  //   let alpha = col?._a;
-  //   col!._a = 1;
-  //   this.makeTmpCtx();
-  //   this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-  //   this.tmpCtx.fillStyle = col;
-  //   this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-  //   this.tmpCtx.globalCompositeOperation = 'multiply';
-  //   this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
-  //   this.tmpCtx.globalCompositeOperation = 'source-over';
+  tinted(color: Color) {
+    // let col = color
+    let alpha = color._a;
+    color!._a = 1;
+    this.makeTmpCtx();
+    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.fillStyle = color;
+    this.tmpCtx.fillRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.globalCompositeOperation = 'multiply';
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.globalCompositeOperation = 'source-over';
 
-  //   this.ctx!.save();
-  //   this.ctx!.resetTransform();
-  //   let old = this.ctx!.globalCompositeOperation;
-  //   this.ctx!.globalCompositeOperation = 'source-in';
-  //   this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-  //   this.ctx!.globalCompositeOperation = old;
-  //   this.ctx!.restore();
+    this.ctx.save();
+    this.ctx.resetTransform();
+    let old = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'source-in';
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.globalCompositeOperation = old;
+    this.ctx.restore();
 
-  //   this.tmpCtx.globalAlpha = alpha;
-  //   this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
-  //   this.tmpCtx.drawImage(this.ctx!.canvas, 0, 0);
-  //   this.tmpCtx.globalAlpha = 1;
+    this.tmpCtx.globalAlpha = alpha;
+    this.tmpCtx.clearRect(0, 0, this.tmpCtx.canvas.width, this.tmpCtx.canvas.height);
+    this.tmpCtx.drawImage(this.ctx.canvas, 0, 0);
+    this.tmpCtx.globalAlpha = 1;
 
-  //   this.ctx!.save();
-  //   this.ctx!.resetTransform();
-  //   this.ctx!.clearRect(0, 0, this.ctx!.canvas.width, this.ctx!.canvas.height);
-  //   this.ctx!.drawImage(this.tmpCtx.canvas, 0, 0);
-  //   this.ctx!.restore();
-  // }
+    this.ctx.save();
+    this.ctx.resetTransform();
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.drawImage(this.tmpCtx.canvas, 0, 0);
+    this.ctx.restore();
+  }
 
-  // tint(...args: Array<any>) {
-  //   const [r, g, b, a] = args;
-  //   const color = this.color(r, g, b, a);
-  //   if (color) {
-  //     this._tint = color;
-  //   }
-  // }
+  tint(color: Color) {
+    this._tint = color;
+  }
 
   noTint() {
     this._tint = null;
   }
 
   mask(img: any) {
-    this.ctx!.save();
-    this.ctx!.resetTransform();
-    let old = this.ctx!.globalCompositeOperation;
-    this.ctx!.globalCompositeOperation = 'destination-in';
-    this.ctx!.drawImage(img.canvas, 0, 0);
-    this.ctx!.globalCompositeOperation = old;
-    this.ctx!.restore();
+    this.ctx.save();
+    this.ctx.resetTransform();
+    let old = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'destination-in';
+    this.ctx.drawImage(img.canvas, 0, 0);
+    this.ctx.globalCompositeOperation = old;
+    this.ctx.restore();
   }
 
   clearTemporaryBuffers() {
@@ -1860,9 +1773,9 @@ export class Q5 {
   }
 
   textAlign(horiz: CanvasTextAlign, vert?: CanvasTextBaseline) {
-    this.ctx!.textAlign = horiz;
+    this.ctx.textAlign = horiz;
     if (vert) {
-      this.ctx!.textBaseline = vert == this.CENTER ? 'middle' : vert;
+      this.ctx.textBaseline = vert == this.CENTER ? 'middle' : vert;
     }
   }
   text(str: string, x: number, y: number, w?: number) {
@@ -1873,31 +1786,31 @@ export class Q5 {
     if (this._style.noFill && this._style.noStroke) {
       return;
     }
-    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
     let lines = str.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!this._style.noFill) {
-        this.ctx!.fillText(lines[i], x, y, w);
+        this.ctx.fillText(lines[i], x, y, w);
       }
       if (!this._style.noStroke) {
-        this.ctx!.strokeText(lines[i], x, y, w);
+        this.ctx.strokeText(lines[i], x, y, w);
       }
       y += this._style.textLeading;
     }
   }
 
   textWidth(str: string): number {
-    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx!.measureText(str).width;
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).width;
   }
 
   textAscent(str: string): number {
-    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx!.measureText(str).actualBoundingBoxAscent;
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).actualBoundingBoxAscent;
   }
   textDescent(str: string): number {
-    this.ctx!.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
-    return this.ctx!.measureText(str).actualBoundingBoxDescent;
+    this.ctx.font = `${this._style.textStyle} ${this._style.textSize}px ${this._style.textFont}`;
+    return this.ctx.measureText(str).actualBoundingBoxDescent;
   }
 
   //================================================================

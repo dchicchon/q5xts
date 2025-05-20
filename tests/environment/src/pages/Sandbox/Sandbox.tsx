@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMediaQuery } from '@mui/material';
 import Editor from '@monaco-editor/react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
+// import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
 import Button from '../../components/Button';
 
@@ -20,35 +20,33 @@ function Sandbox() {
   const [show, setShow] = useState(true);
   const code = useStore((state) => state.code);
   const setCode = useStore((state) => state.setCode);
-  const desktop = useMediaQuery('(min-width:600px)');
   const htmlRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef(null);
   const sketchRef = useRef<Drawing>(null);
 
   useEffect(() => {
-    if (!sketchRef.current) return;
-    resetCode();
-    runCode();
-  },[]);
-
-  useEffect(() => {
     runCode();
   }, [show]);
-  
+
+  // editor code
   const handleMount = (editor) => {
     editorRef.current = editor;
   };
+  const handleChange = (val: string | undefined) => {
+    setCode(val!);
+  };
 
   const runCode = () => {
-    if (editorRef.current) {
-      const testCode = code + 'return {draw, setup}';
-      const fn = new Function(testCode);
-      const { draw, setup } = fn();
-      if (sketchRef.current) {
-        sketchRef.current.dispose();
-      }
-      sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
+    // run this code?
+    const testCode = code + 'return {draw, setup}';
+    const fn = new Function(testCode);
+    const { draw, setup } = fn();
+
+    // need to dispose the old one?
+    if (sketchRef.current) {
+      sketchRef.current.dispose();
     }
+    sketchRef.current = new Drawing('', htmlRef.current!, draw, setup);
   };
 
   const toggleShow = () => {
@@ -60,7 +58,6 @@ function Sandbox() {
     if (editorRef.current) {
       // @ts-expect-error setValue error here. same as above
       editorRef.current.setValue(emptyCode);
-      runCode();
     }
   };
 
@@ -71,9 +68,6 @@ function Sandbox() {
     runCode();
   };
 
-  const handleChange = (val?: string) => {
-    setCode(val!);
-  };
   return (
     <>
       <Box
@@ -99,13 +93,17 @@ function Sandbox() {
       <Grid
         sx={{
           height: '100vh',
+          width: '100vw',
         }}
         container
       >
         {show && (
-          <Grid size={{
-            sm: 12
-          }}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6,
+            }}
+          >
             <Editor
               options={{
                 minimap: {
@@ -115,8 +113,6 @@ function Sandbox() {
               onMount={handleMount}
               onChange={handleChange}
               theme="vs-dark"
-              width={desktop ? '50vw' : '100vw'}
-              height={desktop ? '100vh' : '50vh'}
               value={code}
               defaultLanguage="javascript"
               defaultValue="// some comment"
@@ -125,16 +121,14 @@ function Sandbox() {
         )}
 
         <Grid
-          // sx={
-          //   desktop
-          //     ? {}
-          //     : {
-          //         height: '50vh',
-          //         width: '100%',
-          //       }
-          // }
-          size={6}
-          flexGrow={12}
+          size={{
+            xs: 12,
+            md: 6,
+          }}
+          flexGrow={{
+            xs: 12,
+            md: 12,
+          }}
           ref={htmlRef}
           id="sketch"
         ></Grid>
