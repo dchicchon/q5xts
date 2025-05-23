@@ -238,7 +238,7 @@ export class Q5 {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d')!;
-    if ((scope! = 'offscreen')) {
+    if (scope != 'offscreen') {
       this.parent.appendChild(this.canvas);
     }
     this.MAGIC = 0x9a0ce55;
