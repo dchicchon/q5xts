@@ -41,8 +41,6 @@ This package is a work in progress and should include the capabilities of the or
 
 ## Docs
 
-[TODO: explain Q5 constructor function]
-
 Refer to the [original website](https://q5xjs.netlify.app/) or the original [github repo](https://github.com/LingDong-/q5xjs)
 
 ## Sandbox

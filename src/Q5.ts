@@ -3,6 +3,16 @@ import type { Vector } from './Vector';
 import { Lcg, Shr3, Ziggurat } from './Random';
 import { MULT, ROTY, ROTX, TRFM } from './helpers';
 
+/**
+ * continue modularizing codebase for tree shaking
+ * items to modularize
+ *
+ * - event listeners
+ * - random items
+ * - toHSV to RGB methods (remove or move to Color)
+ * - reconsider how imaging works compared to original p5 method
+ */
+
 interface StyleType {
   colorMode: number;
   noStroke: boolean;
@@ -20,6 +30,10 @@ interface KeysHeld {
   [id: number]: boolean;
 }
 
+/**
+ * @class {Q5}
+ * @classdesc Q5 wrapper for canvas element
+ */
 export class Q5 {
   canvas: HTMLCanvasElement;
   height: number;
@@ -215,9 +229,6 @@ export class Q5 {
   touchMoved?: Function | null;
   touchEnded?: Function | null;
 
-  // is it worth doing all of this in the constructor?
-  // maybe Q5 needs to be split up here?
-  // @ts-expect-error scope is never read
   constructor(scope?: 'global' | 'offscreen' | '', elm?: HTMLElement) {
     // TODO: if no parent should we expect window?
     this.parent = elm || document.body;
@@ -227,7 +238,9 @@ export class Q5 {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d')!;
-    this.parent.appendChild(this.canvas);
+    if ((scope! = 'offscreen')) {
+      this.parent.appendChild(this.canvas);
+    }
     this.MAGIC = 0x9a0ce55;
 
     this.RGB = 0;
@@ -638,6 +651,8 @@ export class Q5 {
     };
   }
 
+  // constructor fn really long?
+
   static hsv2rgb(h: number, s: number, v: number): Array<number> {
     //https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
     let r, g, b;
@@ -778,7 +793,7 @@ export class Q5 {
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
 
-    this.ctx?.scale(this._pixelDensity, this._pixelDensity);
+    this.ctx.scale(this._pixelDensity, this._pixelDensity);
     this.defaultStyle();
     return this._pixelDensity;
   }
@@ -828,7 +843,6 @@ export class Q5 {
   fract(x: number) {
     return x - Math.floor(x);
   }
-
   degrees(x: number) {
     return (x * 180) / Math.PI;
   }
@@ -882,6 +896,11 @@ export class Q5 {
     this.ctx.lineWidth = n;
   }
 
+  /**
+   * Set stroke
+   * @param r
+   * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeStyle
+   */
   stroke(r: string | Color) {
     this._style.noStroke = false;
     if (typeof r == 'string') {
@@ -895,6 +914,12 @@ export class Q5 {
     this._style.noStroke = true;
   }
 
+  /**
+   *
+   * Set a color as a fill
+   * @param r
+   * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillStyle
+   */
   fill(r: string | Color) {
     this._style.noFill = false;
     if (typeof r == 'string') {
@@ -908,12 +933,23 @@ export class Q5 {
     this._style.noFill = true;
   }
 
-  blendMode(x: GlobalCompositeOperation) {
-    this.ctx.globalCompositeOperation = x;
+  /**
+   *
+   * @name blendMode
+   * @param {GlobalCompositeOperation} globalCompositeOp
+   * @summary Set blend mode for canvas
+   * @see docs https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/globalCompositeOperation
+   */
+  blendMode(globalCompositeOp: GlobalCompositeOperation) {
+    this.ctx.globalCompositeOperation = globalCompositeOp;
   }
 
-  strokeCap(x: CanvasLineCap) {
-    this.ctx.lineCap = x;
+  /**
+   * @method strokeCap
+   * @param {CanvasLineCap} linecap
+   */
+  strokeCap(linecap: CanvasLineCap) {
+    this.ctx.lineCap = linecap;
   }
 
   strokeJoin(x: CanvasLineJoin) {
@@ -1440,9 +1476,18 @@ export class Q5 {
   translate(x: number, y: number) {
     this.ctx.translate(x, y);
   }
+
   rotate(r: number) {
     this.ctx.rotate(r);
   }
+
+  /**
+   *
+   * @param {number} x Scaling factor in the horizontal direction. A negative value flips pixels across the vertical axis. A value of 1 results in no horizontal scaling.
+   * @param {number} y Scaling factor in the vertical direction. A negative value flips pixels across the horizontal axis. A value of 1 results in no vertical scaling.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/scale
+   */
   scale(x: number, y?: number) {
     if (y == undefined) {
       y = x;
